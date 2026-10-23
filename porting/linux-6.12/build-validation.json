@@ -34,6 +34,7 @@
   },
   "boot_tested": false,
   "android14_vendor_compatible": false,
-  "flashable_boot_image_packaged": false,
-  "schema_validated": false
+  "schema_validated": false,
+  "experimental_boot_image_packaged": true,
+  "boot_validation_report": "boot-validation.json"
 }

@@ -1,0 +1,58 @@
+{
+  "purpose": "standalone mainline bring-up; not Android userspace",
+  "upstream_commit": "adc218676eef25575469234709c2d87185ca223a",
+  "kernel_release": "6.12.0-wayne-bringup-dirty",
+  "boot_img_bytes": 67108864,
+  "boot_img_sha256": "71a5172a563ddddf059b62ac73ae6b8badfef5c90a5e69d17bbb83f7aa730dae",
+  "compact_img_bytes": 14696448,
+  "compact_img_sha256": "fac3c2641e0a067a92f9706079c425720688d47a3b1fe19cc05a2e3ea1a5b12e",
+  "kernel_payload_sha256": "1914ebf087b2869772aaf39e0b013098d024ee1d7aaf0ba0b21d855b20ee008b",
+  "ramdisk_sha256": "263dcb1bf567f858e2c839fd620655b494e550c0b794f68630be69480f34cbd0",
+  "init_sha256": "2f8d0bf6e65706c38828ef2fcd72f4dfc1cb14d5dad7587954c332a38aa004c6",
+  "init_statically_linked": true,
+  "mkbootimg_sha256": "5579fb6bcb9e89e790a70fb9ccf3c00cf56e3e46aef74d84fcb0964887e5576e",
+  "header": {
+    "header_version": 1,
+    "page_size": 4096,
+    "kernel_address": "0x80000000",
+    "ramdisk_address": "0x84000000",
+    "tags_address": "0x83e00000",
+    "cmdline": "earlycon=msm_serial_dm,0xc170000 console=ttyMSM0,115200n8 rdinit=/init loglevel=8 ignore_loglevel initcall_debug printk.devkmsg=on nokaslr clk_ignore_unused pd_ignore_unused panic=0",
+    "sha1_id_verified": true,
+    "sections_verified": true,
+    "zero_padding_verified": true
+  },
+  "dtb_validation": {
+    "sha256": "1f076f4cdce36775628eed3201d2d27f299f15bb3989113af124fe775b54775d",
+    "bytes": 45359,
+    "nodes": 343,
+    "board_checks_passed": 6,
+    "static_reserved_ranges_checked": 16,
+    "validation_scope": "dtb structure, board properties and static reservations",
+    "boot_tested": false,
+    "schema_validated": false
+  },
+  "device_boot_tested": false,
+  "android14_vendor_compatible": false,
+  "signed": false,
+  "qemu_smoke_tested": true,
+  "address_note": "ARM64-aligned RAM placement; Wayne bootloader handling remains untested",
+  "qemu_scope": "Exact kernel and ramdisk on QEMU virt, cpu=max, smp=1, initcall_debug; excludes Wayne DTB and Android bootloader/container",
+  "qemu_markers_verified": [
+    "WAYNE_INIT_STARTED pid=1",
+    "kernel=6.12.0-wayne-bringup-dirty",
+    "heartbeat=1"
+  ],
+  "qemu_stopped_by_test_timeout": true,
+  "qemu_other_profiles": "cortex-a53 SMP and max without initcall_debug exceeded test timeout; no device boot claim",
+  "aosp_independent_unpack_verified": true,
+  "ramdisk_newc_archive_verified": true,
+  "padding_and_kernel_corruption_rejected": true,
+  "dsh_review": {
+    "model_steps": 6,
+    "completed": true,
+    "coordinator_reviewed": true,
+    "cost_returned": false,
+    "scope": "Initial static init and image geometry; final padding/cmdline separately verified by coordinator"
+  }
+}

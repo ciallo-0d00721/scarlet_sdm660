@@ -53,6 +53,13 @@
       "problemMatcher": ["$gcc"]
     },
     {
+      "label": "Wayne: package 6.12 debug boot.img (Remote SSH)",
+      "type": "process",
+      "command": "python3",
+      "args": ["${workspaceFolder}/tools/wayne/make-boot.py", "--work-root", "${workspaceFolder}/..", "--output", "${workspaceFolder}/../boot-6.12", "--mkbootimg", "${workspaceFolder}/../mkbootimg-aosp-android11.py"],
+      "problemMatcher": ["$gcc"]
+    },
+    {
       "label": "Wayne ROM: setup Android 14 build environment",
       "type": "process",
       "command": "bash",

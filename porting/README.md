@@ -1,6 +1,6 @@
 # 小米 6X / wayne：6.12 移植与 Android 14 构建
 
-当前阶段：**4.19 基线和真实 Linux 6.12 Image 均编译完成；尚无可刷机交付物或真机启动结果。**
+当前阶段：**4.19 基线和真实 Linux 6.12 Image 均编译完成；已生成独立调试 boot.img，尚未真机验证。**
 
 用户目标是为小米 6X 升级真实的 Linux 6.12，并同时构建类原生系统。当前按用户要求仅编译内核，Android 14 整包同步和编译已暂停。后续逐项完成 6.12 硬件与 Android 接口移植。仓库根目录仍然是 4.19，实验性 6.12 使用独立源码树；没有修改版本号冒充升级。
 
@@ -40,6 +40,12 @@ Linux 6.12 实际 Kbuild 构建退出码 0，产出 `Image`、`Image.gz` 和 Way
 ```
 
 实际 Kbuild DTB 的 16 段静态保留内存无重叠。构建脚本已接入 DTB 结构、板级属性和重叠检查；人为扩大 framebuffer 导致的重叠及截断 DTB 均会被拒绝。上述检查不等于 schema 或真机验证；schema 工具安装遇到网络依赖问题，完整 `dtbs_check` 尚未执行。设备树源码审查及其局限见 `linux-6.12/boot-audit.md`。
+
+## 独立主线 boot.img
+
+已使用真实上游 6.12 内核、Wayne DTB 和自编译的静态 AArch64 `/init` 封装 Android header v1 镜像。`boot.img` 为 64 MiB 零填充版本，`boot-compact.img` 为相同内容的紧凑版。它运行独立调试 ramdisk，不启动 Android 14；显示、触摸和 USB/ADB 仍未适配。
+
+AOSP 工具解包和内容比对、镜像头/SHA1 ID、newc/ELF、补零及篡改拒绝检查通过。相同内核与 ramdisk 在 QEMU virt 单核调试配置下进入 PID 1 并输出心跳；其他配置存在超时，未以此推断 Wayne 真机兼容性。封装记录见 `linux-6.12/boot-validation.json`，构建命令见 `linux-6.12/boot-image.md`。
 
 ## 较早的离线验证结果
 

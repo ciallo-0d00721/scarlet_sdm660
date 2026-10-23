@@ -13,4 +13,4 @@ DSH 在单独的公开源码副本中完成 35 步审查，仅生成报告，没
 
 主助手在实际 Work Kbuild DTB 上验证了 6 项板级属性和 16 段静态保留内存无重叠；扩大 framebuffer 造成重叠和截断 DTB 的反例均被拒绝。该检查已接入构建脚本。
 
-6.12 Image 和 DTB 均编译完成，见 build-validation.json。完整 dtbs_check 尚未完成；未做启动镜像封装、真机启动或 Android 14 厂商接口验证。DSH 服务未返回可核对的费用金额，不能据步数推算账单。
+6.12 Image 和 DTB 均编译完成，见 build-validation.json。完整 dtbs_check 尚未完成；启动镜像已封装为独立调试版本，见 boot-validation.json；未做真机启动或 Android 14 厂商接口验证。DSH 服务未返回可核对的费用金额，不能据步数推算账单。
