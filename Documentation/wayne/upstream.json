@@ -1,0 +1,9 @@
+{
+  "upstream_commit": "adc218676eef25575469234709c2d87185ca223a",
+  "upstream_tree": "ac4266ccaf1cf79e8fb22ad3e0d86deac358ffb9",
+  "baseline_commit": "9ad5152ccb039f8392c18d423f425b435d8e2c9c",
+  "branch": "mainline/wayne-6.12",
+  "upstream_repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "tag": "v6.12",
+  "import_method": "Exact complete upstream source tree imported as a root snapshot; upstream history not imported."
+}

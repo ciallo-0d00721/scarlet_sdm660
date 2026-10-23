@@ -858,6 +858,7 @@ properties:
       - items:
           - enum:
               - xiaomi,lavender
+              - xiaomi,wayne
           - const: qcom,sdm660
 
       - items:

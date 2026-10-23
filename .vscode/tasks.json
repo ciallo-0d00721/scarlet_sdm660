@@ -1,0 +1,9 @@
+{
+  "version": "2.0.0",
+  "options": {"env": {"WAYNE_OUT": "${workspaceFolder}/../out-6.12"}},
+  "tasks": [
+    {"label": "Wayne 6.12: configure", "type": "process", "command": "bash", "args": ["${workspaceFolder}/tools/wayne/build.sh", "config"], "problemMatcher": ["$gcc"]},
+    {"label": "Wayne 6.12: build kernel", "type": "process", "command": "bash", "args": ["${workspaceFolder}/tools/wayne/build.sh", "image"], "group": {"kind": "build", "isDefault": true}, "problemMatcher": ["$gcc"]},
+    {"label": "Wayne 6.12: build boot.img", "type": "process", "command": "bash", "args": ["${workspaceFolder}/tools/wayne/build.sh", "boot"], "problemMatcher": ["$gcc"]}
+  ]
+}
