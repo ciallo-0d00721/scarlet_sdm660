@@ -28,6 +28,8 @@ e8aa195af4b65ee814a4e55c66da248c43fb8a3bac37999d3a01bceb24767129a  Image.gz-dtb
 e837f85052bf72a1d442a7134d110e8d1ed3761be588989f43183871dee94f224  sdm660-mtp-wayne.dtb
 ```
 
+下载后的产物哈希与 Work 输出一致；gzip 解压、ARM64 Image 头、4.19.325 版本串和合并镜像内的 Wayne DTB 精确匹配检查通过。配置和补丁哈希等构建记录见 `vendor-4.19/build-validation.json`。这些检查不代表手机启动验证。
+
 DSH 完成遗留 KernelSU 引用的最小清理，主助手审查后在真实 Kbuild 中验证通过。`vendor-4.19/0001-remove-stale-kernelsu.patch` 保存同一修复，构建脚本自动应用到固定旧基线并检查重复执行。
 
 Linux 6.12 已完成实际 Kbuild 配置生成，44 个配置片段选项保留检查通过，Wayne DTB 已由 Kbuild 生成；完整 Image 尚在编译。上述产物尚未做真机启动或完整设备树 schema 检查。
