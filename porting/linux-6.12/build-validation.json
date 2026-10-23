@@ -1,0 +1,39 @@
+{
+  "validation_date": "2026-10-23",
+  "build_completed_date": "2026-10-22",
+  "kernel_release": "6.12.0-wayne-bringup-dirty",
+  "upstream_commit": "adc218676eef25575469234709c2d87185ca223a",
+  "overlay_source_commit": "e44f85b5728dc9aa63cb05b15b01163d2aece2aa",
+  "overlay_dts_sha256": "fe49e5d665fd03583a8450bed66177c1650469fb43c72879379781f8471915a8",
+  "config_fragment_sha256": "6e7a12528b315adadee3bb3ae3f04c94d31a97c3f4cbe74331dc8b4da66075ef",
+  "generated_config_sha256": "e101ff67295668a88858e2c8c33bde621cef2c856384d7e473f8a6dfb5da085c",
+  "compiler": "Clang 18.1.3 / LLD 18.1.3",
+  "jobs": 4,
+  "kbuild_exit_code": 0,
+  "kernel_compiled": true,
+  "artifacts": [
+    {
+      "name": "Image.gz",
+      "bytes": 14359835,
+      "sha256": "9f8241a99bb73d24844ba1797990ed0631ce0b84cb0236db6f071a050faf3c6e"
+    },
+    {
+      "name": "sdm660-xiaomi-wayne.dtb",
+      "bytes": 45359,
+      "sha256": "1f076f4cdce36775628eed3201d2d27f299f15bb3989113af124fe775b54775d"
+    }
+  ],
+  "decompressed_image_sha256": "6e083302650f9110c5ee6149160d777b2966e26771e83cc2d5c4e72eb4c9273b",
+  "artifact_checks": {
+    "download_hashes_verified": true,
+    "gzip_valid": true,
+    "arm64_image_magic_valid": true,
+    "linux_release_verified": true,
+    "configuration_fragment_checks_passed": 44,
+    "static_reserved_ranges_without_overlap": 16
+  },
+  "boot_tested": false,
+  "android14_vendor_compatible": false,
+  "flashable_boot_image_packaged": false,
+  "schema_validated": false
+}

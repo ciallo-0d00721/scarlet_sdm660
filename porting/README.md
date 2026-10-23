@@ -1,6 +1,6 @@
 # 小米 6X / wayne：6.12 移植与 Android 14 构建
 
-当前阶段：**4.19 基线编译完成，6.12 Image 编译进行中；尚无可刷机交付物或真机启动结果。**
+当前阶段：**4.19 基线和真实 Linux 6.12 Image 均编译完成；尚无可刷机交付物或真机启动结果。**
 
 用户目标是为小米 6X 升级真实的 Linux 6.12，并同时构建类原生系统。当前按用户要求仅编译内核，Android 14 整包同步和编译已暂停。后续逐项完成 6.12 硬件与 Android 接口移植。仓库根目录仍然是 4.19，实验性 6.12 使用独立源码树；没有修改版本号冒充升级。
 
@@ -17,7 +17,7 @@
 
 社区组织名含有 LineageOS，并不表示这是 LineageOS 官方支持或官方构建。
 
-## Work 构建结果（2026-10-22）
+## Work 构建结果（2026-10-23 核对）
 
 本次构建使用 PVE Work 虚拟机：Ubuntu 24.04、24 vCPU、约 8 GiB RAM，Clang/LLD 18.1.3 和 AArch64/ARM GCC 13。通过 VS Code Remote SSH 打开 Linux 上的完整源码目录；当前无需安装 WSL。
 
@@ -32,7 +32,14 @@ e837f85052bf72a1d442a7134d110e8d1ed3761be588989f43183871dee94f224  sdm660-mtp-wa
 
 DSH 完成遗留 KernelSU 引用的最小清理，主助手审查后在真实 Kbuild 中验证通过。`vendor-4.19/0001-remove-stale-kernelsu.patch` 保存同一修复，构建脚本自动应用到固定旧基线并检查重复执行。
 
-Linux 6.12 已完成实际 Kbuild 配置生成，44 个配置片段选项保留检查通过，Wayne DTB 已由 Kbuild 生成；完整 Image 尚在编译。上述产物尚未做真机启动或完整设备树 schema 检查。
+Linux 6.12 实际 Kbuild 构建退出码 0，产出 `Image`、`Image.gz` 和 Wayne DTB。下载后核对 gzip、ARM64 头和实际版本 `6.12.0-wayne-bringup-dirty`；44 个配置片段选项均保留。`dirty` 来自独立上游树中的移植改动。构建证据见 `linux-6.12/build-validation.json`。
+
+```text
+9f8241a99bb73d24844ba1797990ed0631ce0b84cb0236db6f071a050faf3c6e  Image.gz
+1f076f4cdce36775628eed3201d2d27f299f15bb3989113af124fe775b54775d  sdm660-xiaomi-wayne.dtb
+```
+
+实际 Kbuild DTB 的 16 段静态保留内存无重叠。构建脚本已接入 DTB 结构、板级属性和重叠检查；人为扩大 framebuffer 导致的重叠及截断 DTB 均会被拒绝。上述检查不等于 schema 或真机验证；schema 工具安装遇到网络依赖问题，完整 `dtbs_check` 尚未执行。设备树源码审查及其局限见 `linux-6.12/boot-audit.md`。
 
 ## 较早的离线验证结果
 
@@ -106,7 +113,7 @@ ROM 脚本当前构建的是 **4.19 的 Android 14 基线**。6.12 尚无完整 
 | --- | --- | --- |
 | 原版构建 | 4.19 `Image.gz-dtb`、Wayne DTB，固定配置和工具链 | Work 编译完成，未真机测试 |
 | ROM 基线 | Android 14 整包完成构建，原内核可启动 | manifest/任务已准备，未同步整包 |
-| 新内核编译 | Kconfig 选项保留检查、Kbuild DTB 和 Image、设备树 schema 检查 | Work 配置和 Kbuild DTB 通过，Image 编译中，schema 待做 |
+| 新内核编译 | Kconfig 选项保留检查、Kbuild DTB 和 Image、设备树 schema 检查 | Work 配置、Kbuild DTB 和 Image 完成，16 段静态保留区无重叠，schema 待做 |
 | 初始启动 | 核实 RAM/保留区、boot header/偏移，串口或 ramoops 日志可采集 | 未真机测试 |
 | 核心硬件 | 显示、触摸、USB、存储、调频/温控、充电与电池 | 未完成 |
 | Android 接口 | ION/DMA-BUF、KGSL/DRM、MDSS、相机、音频、QSEECom、SELinux、init/fstab | 未完成 |

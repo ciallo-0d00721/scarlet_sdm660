@@ -103,6 +103,9 @@ if [[ $mode == prepare-6.12 ]]; then
 fi
 make "${args[@]}" -j"$jobs" qcom/sdm660-xiaomi-wayne.dtb
 test -s "$out/arch/arm64/boot/dts/qcom/sdm660-xiaomi-wayne.dtb"
+python3 "$repo_root/tools/wayne/inspect-dtb.py" \
+    "$out/arch/arm64/boot/dts/qcom/sdm660-xiaomi-wayne.dtb" \
+    --output "$out/wayne-dtb-validation.json"
 if [[ $mode == image-6.12 ]]; then
     make "${args[@]}" -j"$jobs" Image.gz
     test -s "$out/arch/arm64/boot/Image.gz"

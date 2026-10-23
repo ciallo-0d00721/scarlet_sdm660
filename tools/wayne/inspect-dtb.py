@@ -64,6 +64,29 @@ def inspect(path):
             raise ValueError(f"Unknown structure token {token}")
     else:
         raise ValueError("Missing end-of-tree token")
+    # Check the complete inherited reservation map, not only selected board values.
+    reserved = nodes.get("/reserved-memory", {})
+    if reserved.get("#address-cells") != struct.pack(">I", 2) or \
+            reserved.get("#size-cells") != struct.pack(">I", 2):
+        raise ValueError("Expected 64-bit reserved-memory address and size cells")
+    ranges = []
+    for node, props in nodes.items():
+        if not node.startswith("/reserved-memory/") or node.count("/") != 2 or "reg" not in props:
+            continue
+        if props.get("status", b"okay\0") not in (b"okay\0", b"ok\0"):
+            continue
+        reg = props["reg"]
+        if not reg or len(reg) % 16:
+            raise ValueError(f"Invalid reserved-memory reg: {node}")
+        for offset in range(0, len(reg), 16):
+            address, size = struct.unpack_from(">QQ", reg, offset)
+            if not size or address + size > 1 << 64:
+                raise ValueError(f"Invalid reserved-memory range: {node}")
+            ranges.append((address, address + size, node))
+    ranges.sort()
+    for previous, current in zip(ranges, ranges[1:]):
+        if current[0] < previous[1]:
+            raise ValueError(f"Reserved-memory overlap: {previous[2]} and {current[2]}")
     expected = {
         ("/", "compatible"): b"xiaomi,wayne\0qcom,sdm660\0",
         ("/", "qcom,msm-id"): struct.pack(">2I", 317, 0),
@@ -77,7 +100,9 @@ def inspect(path):
             raise ValueError(f"Unexpected Wayne property: {node}:{prop}")
     return {"sha256": hashlib.sha256(data).hexdigest(), "bytes": total,
             "nodes": len(nodes), "board_checks_passed": len(expected),
-            "kernel_compiled": False, "boot_tested": False, "schema_validated": False}
+            "static_reserved_ranges_checked": len(ranges),
+            "validation_scope": "dtb structure, board properties and static reservations",
+            "boot_tested": False, "schema_validated": False}
 
 
 if __name__ == "__main__":
