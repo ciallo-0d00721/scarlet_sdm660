@@ -91,6 +91,7 @@ def inspect(path):
         ("/", "compatible"): b"xiaomi,wayne\0qcom,sdm660\0",
         ("/", "qcom,msm-id"): struct.pack(">2I", 317, 0),
         ("/chosen", "stdout-path"): b"serial0:115200n8\0",
+        ("/soc@0/pinctrl@3100000", "gpio-reserved-ranges"): struct.pack(">2I", 8, 4),
         ("/soc@0/mmc@c0c4000", "status"): b"okay\0",
         ("/reserved-memory/ramoops@a0000000", "reg"): struct.pack(">4I", 0, 0xa0000000, 0, 0x400000),
         ("/reserved-memory/tzbuffer@94a00000", "reg"): struct.pack(">4I", 0, 0x94a00000, 0, 0x600000),

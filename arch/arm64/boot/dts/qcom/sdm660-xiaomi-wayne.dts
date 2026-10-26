@@ -67,6 +67,11 @@
 	status = "okay";
 };
 
+&tlmm {
+	/* GPIOs 8-11 are owned by firmware; probing them can raise an SError. */
+	gpio-reserved-ranges = <8 4>;
+};
+
 &pon_pwrkey {
 	status = "okay";
 };
