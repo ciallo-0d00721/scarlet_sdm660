@@ -87,7 +87,18 @@ def inspect(path):
     for previous, current in zip(ranges, ranges[1:]):
         if current[0] < previous[1]:
             raise ValueError(f"Reserved-memory overlap: {previous[2]} and {current[2]}")
+    framebuffer_base = 0x9d400000
+    framebuffer_size = 1080 * 2160 * 4
     expected = {
+        ("/chosen", "#address-cells"): struct.pack(">I", 2),
+        ("/chosen", "#size-cells"): struct.pack(">I", 2),
+        ("/chosen", "ranges"): b"",
+        ("/chosen/framebuffer@9d400000", "compatible"): b"simple-framebuffer\0",
+        ("/chosen/framebuffer@9d400000", "reg"): struct.pack(">QQ", framebuffer_base, framebuffer_size),
+        ("/chosen/framebuffer@9d400000", "width"): struct.pack(">I", 1080),
+        ("/chosen/framebuffer@9d400000", "height"): struct.pack(">I", 2160),
+        ("/chosen/framebuffer@9d400000", "stride"): struct.pack(">I", 1080 * 4),
+        ("/chosen/framebuffer@9d400000", "format"): b"a8r8g8b8\0",
         ("/", "compatible"): b"xiaomi,wayne\0qcom,sdm660\0",
         ("/", "qcom,msm-id"): struct.pack(">2I", 317, 0),
         ("/chosen", "stdout-path"): b"serial0:115200n8\0",
@@ -108,6 +119,14 @@ def inspect(path):
     for (node, prop), value in expected.items():
         if nodes.get(node, {}).get(prop) != value:
             raise ValueError(f"Unexpected Wayne property: {node}:{prop}")
+    fb = nodes["/chosen/framebuffer@9d400000"]
+    if fb.get("display") != nodes.get("/soc@0/display-subsystem@c900000", {}).get("phandle") or \
+            len(fb.get("display", b"")) != 4:
+        raise ValueError("Firmware framebuffer must identify the disabled MDSS controller")
+    reservation = nodes.get("/reserved-memory/framebuffer@9d400000", {})
+    if reservation.get("reg") != struct.pack(">QQ", framebuffer_base, 0x23ff000) or \
+            "no-map" not in reservation or framebuffer_size > 0x23ff000:
+        raise ValueError("Framebuffer surface must fit inside its no-map reservation")
     sleep = nodes.get("/clocks/sleep-clk", {})
     clock = nodes["/soc@0/watchdog@17817000"].get("clocks", b"")
     if len(clock) != 4 or sleep.get("compatible") != b"fixed-clock\0" or \
