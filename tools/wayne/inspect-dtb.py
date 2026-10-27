@@ -95,6 +95,12 @@ def inspect(path):
         ("/soc@0/watchdog@17817000", "compatible"): b"qcom,apss-wdt-sdm660\0qcom,kpss-wdt\0",
         ("/soc@0/watchdog@17817000", "reg"): struct.pack(">2I", 0x17817000, 0x1000),
         ("/soc@0/watchdog@17817000", "clock-names"): b"sleep\0",
+        ("/soc@0/phy@c012000", "status"): b"okay\0",
+        ("/soc@0/usb@a8f8800", "status"): b"okay\0",
+        ("/soc@0/usb@a8f8800", "qcom,select-utmi-as-pipe-clk"): b"",
+        ("/soc@0/usb@a8f8800/usb@a800000", "dr_mode"): b"peripheral\0",
+        ("/soc@0/usb@a8f8800/usb@a800000", "maximum-speed"): b"high-speed\0",
+        ("/soc@0/usb@a8f8800/usb@a800000", "phy-names"): b"usb2-phy\0",
         ("/soc@0/mmc@c0c4000", "status"): b"okay\0",
         ("/reserved-memory/ramoops@a0000000", "reg"): struct.pack(">4I", 0, 0xa0000000, 0, 0x400000),
         ("/reserved-memory/tzbuffer@94a00000", "reg"): struct.pack(">4I", 0, 0x94a00000, 0, 0x600000),
@@ -107,10 +113,43 @@ def inspect(path):
     if len(clock) != 4 or sleep.get("compatible") != b"fixed-clock\0" or \
             clock != sleep.get("phandle"):
         raise ValueError("Watchdog must use the inherited fixed sleep clock")
+    providers = {}
+    for node, props in nodes.items():
+        for name in ("pm660l", "pm660"):
+            if props.get("compatible") == f"qcom,rpm-{name}-regulators\0".encode():
+                if name in providers:
+                    raise ValueError(f"Duplicate {name} regulator provider")
+                providers[name] = node
+    if set(providers) != {"pm660l", "pm660"}:
+        raise ValueError("Missing USB regulator providers")
+    phy = nodes["/soc@0/phy@c012000"]
+    for supply, provider, rail in (("vdd-supply", "pm660l", "l1"),
+                                    ("vdda-pll-supply", "pm660", "l10"),
+                                    ("vdda-phy-dpdm-supply", "pm660l", "l7")):
+        rail_props = nodes.get(providers[provider] + "/" + rail, {})
+        reference = phy.get(supply, b"")
+        if len(reference) != 4 or reference != rail_props.get("phandle"):
+            raise ValueError(f"Wrong USB PHY rail: {supply}")
+    usb = nodes["/soc@0/usb@a8f8800/usb@a800000"]
+    if usb.get("status", b"okay\0") not in (b"okay\0", b"ok\0"):
+        raise ValueError("USB peripheral node is disabled")
+    if len(usb.get("phys", b"")) != 4 or usb["phys"] != phy.get("phandle"):
+        raise ValueError("USB peripheral must use only the primary USB2 PHY")
+    if "extcon" in usb or "usb-role-switch" in usb:
+        raise ValueError("This diagnostic uses fixed peripheral mode")
+    for provider, rail, low, high in (("pm660l", "l1", 800000, 925000),
+                                       ("pm660", "l10", 1800000, 1800000),
+                                       ("pm660l", "l7", 2700000, 3125000),
+                                       ("pm660l", "s2", 1050000, 1050000)):
+        props = nodes.get(providers[provider] + "/" + rail, {})
+        if props.get("regulator-min-microvolt") != struct.pack(">I", low) or \
+                props.get("regulator-max-microvolt") != struct.pack(">I", high):
+            raise ValueError(f"Unexpected USB regulator voltage: {provider}/{rail}")
     return {"sha256": hashlib.sha256(data).hexdigest(), "bytes": total,
             "nodes": len(nodes), "board_checks_passed": len(expected),
             "static_reserved_ranges_checked": len(ranges),
             "watchdog_clock_reference_checked": True,
+            "usb_phy_and_supply_references_checked": True,
             "validation_scope": "dtb structure, board properties and static reservations",
             "boot_tested": False, "schema_validated": False}
 

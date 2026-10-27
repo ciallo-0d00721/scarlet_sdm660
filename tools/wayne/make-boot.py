@@ -14,6 +14,7 @@ import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 CMDLINE = ("earlycon=msm_serial_dm,0xc170000 console=ttyMSM0,115200n8 "
+           "console=ttyGS0,115200n8 g_serial.use_acm=1 g_serial.n_ports=1 log_buf_len=1M "
            "rdinit=/init loglevel=8 ignore_loglevel initcall_debug printk.devkmsg=on nokaslr "
            "clk_ignore_unused pd_ignore_unused panic=0")
 BASE = 0x80000000

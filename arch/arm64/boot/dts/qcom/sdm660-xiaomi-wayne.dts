@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Experimental Xiaomi Mi 6X bring-up, based on the Wayne downstream board data.
- * This does not yet describe display, touch, USB, charging, radio or camera.
+ * USB is diagnostic-only and not validated; this does not yet describe display,
+ * touch, charging, radio or camera.
  * Board IDs and physical addresses below come from scarlet_sdm660 3316cb385147.
  */
 
@@ -94,6 +95,9 @@
 &rpm_requests {
 	regulators-0 {
 		compatible = "qcom,rpm-pm660l-regulators";
+		vdd_s2-supply = <&vph_pwr>;
+		vdd_l1_l9_l10-supply = <&vreg_s2b_1p05>;
+		vdd_l3_l5_l7_l8-supply = <&vreg_bob>;
 		vdd_bob-supply = <&vph_pwr>;
 		vdd_l4_l6-supply = <&vreg_bob>;
 
@@ -103,11 +107,30 @@
 			regulator-boot-on;
 		};
 
+		vreg_s2b_1p05: s2 {
+			regulator-min-microvolt = <1050000>;
+			regulator-max-microvolt = <1050000>;
+			regulator-enable-ramp-delay = <200>;
+		};
+
+		vreg_l1b_0p925: l1 {
+			regulator-min-microvolt = <800000>;
+			regulator-max-microvolt = <925000>;
+			regulator-enable-ramp-delay = <250>;
+			regulator-allow-set-load;
+		};
+
 		vreg_l4b: l4 {
 			regulator-min-microvolt = <2944000>;
 			regulator-max-microvolt = <2952000>;
 			regulator-allow-set-load;
 			regulator-system-load = <570000>;
+		};
+
+		vreg_l7b_3p125: l7 {
+			regulator-min-microvolt = <2700000>;
+			regulator-max-microvolt = <3125000>;
+			regulator-enable-ramp-delay = <250>;
 		};
 	};
 
@@ -131,6 +154,13 @@
 			regulator-always-on;
 		};
 
+		vreg_l10a_1p8: l10 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-enable-ramp-delay = <250>;
+			regulator-allow-set-load;
+		};
+
 		/* Keep the LPDDR4 rail enabled, as in the upstream SDM660 board. */
 		l13 {
 			regulator-min-microvolt = <1780000>;
@@ -147,4 +177,25 @@
 	/* Begin with HS200; enable HS400/CQE only after board validation. */
 	mmc-hs200-1_8v;
 	status = "okay";
+};
+
+&qusb2phy0 {
+	status = "okay";
+
+	vdd-supply = <&vreg_l1b_0p925>;
+	vdda-pll-supply = <&vreg_l10a_1p8>;
+	vdda-phy-dpdm-supply = <&vreg_l7b_3p125>;
+};
+
+&usb3 {
+	qcom,select-utmi-as-pipe-clk;
+	status = "okay";
+};
+
+&usb3_dwc3 {
+	dr_mode = "peripheral";
+	maximum-speed = "high-speed";
+
+	phys = <&qusb2phy0>;
+	phy-names = "usb2-phy";
 };

@@ -6,8 +6,10 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mount.h>
+#include <sys/reboot.h>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
 #include <sys/utsname.h>
@@ -77,12 +79,61 @@ static void list_directory(const char *path)
     closedir(dir);
 }
 
+static unsigned int parse_reboot_argument(const char *argument)
+{
+    static const char prefix[] = "wayne.reboot_after=";
+    const char *value;
+    char *end;
+    unsigned long seconds;
+    if (strncmp(argument, prefix, sizeof(prefix) - 1))
+        return 0;
+    value = argument + sizeof(prefix) - 1;
+    if (*value < '0' || *value > '9')
+        return 0;
+    errno = 0;
+    seconds = strtoul(value, &end, 10);
+    if (errno || *end || seconds < 30 || seconds > 300)
+        return 0;
+    return (unsigned int)seconds;
+}
+
+static unsigned int read_reboot_timer(void)
+{
+    FILE *file = fopen("/proc/cmdline", "r");
+    char command[4096], *token, *save;
+    unsigned int seconds = 0;
+    if (!file)
+        return 0;
+    if (!fgets(command, sizeof(command), file)) {
+        fclose(file);
+        return 0;
+    }
+    fclose(file);
+    for (token = strtok_r(command, " \t\n", &save); token;
+         token = strtok_r(NULL, " \t\n", &save)) {
+        if (!strncmp(token, "wayne.reboot_after=", sizeof("wayne.reboot_after=") - 1))
+            seconds = parse_reboot_argument(token);
+    }
+    return seconds;
+}
+
 int main(int argc, char **argv)
 {
-    struct utsname name;
+    struct utsname name = {0};
     unsigned long heartbeat = 0;
+    unsigned long elapsed = 0;
+    unsigned int reboot_after;
     int console;
     if (argc == 2 && !strcmp(argv[1], "--self-test")) {
+        if (parse_reboot_argument("wayne.reboot_after=30") != 30 ||
+            parse_reboot_argument("wayne.reboot_after=60") != 60 ||
+            parse_reboot_argument("wayne.reboot_after=300") != 300 ||
+            parse_reboot_argument("wayne.reboot_after=29") ||
+            parse_reboot_argument("wayne.reboot_after=301") ||
+            parse_reboot_argument("wayne.reboot_after=-60") ||
+            parse_reboot_argument("wayne.reboot_after=60junk") ||
+            parse_reboot_argument("other=60"))
+            return 1;
         puts("WAYNE_INIT_SELF_TEST_OK");
         return 0;
     }
@@ -108,6 +159,7 @@ int main(int argc, char **argv)
     if (!uname(&name))
         log_message("kernel=%s machine=%s", name.release, name.machine);
     mount_ram_filesystem("proc", "/proc");
+    reboot_after = read_reboot_timer();
     mount_ram_filesystem("sysfs", "/sys");
     directory("/sys/fs/pstore");
     mount_ram_filesystem("pstore", "/sys/fs/pstore");
@@ -119,11 +171,23 @@ int main(int argc, char **argv)
     list_directory("/sys/class/mmc_host");
     list_directory("/sys/block");
     list_directory("/sys/fs/pstore");
-    log_message("BRINGUP_READY; no disk partitions mounted; waiting for external reset");
+    log_message("BRINGUP_READY; no disk partitions mounted");
+    if (reboot_after)
+        log_message("AUTO_REBOOT_AFTER=%u seconds", reboot_after);
     for (;;) {
-        struct timespec delay = {30, 0};
+        unsigned int step = reboot_after ? 1 : 30;
+        struct timespec delay = {step, 0};
         while (nanosleep(&delay, &delay) && errno == EINTR) {}
+        elapsed += step;
         while (waitpid(-1, NULL, WNOHANG) > 0) {}
-        log_message("heartbeat=%lu", ++heartbeat);
+        if (!(elapsed % 30))
+            log_message("heartbeat=%lu pid=%ld kernel=%s", ++heartbeat,
+                        (long)getpid(), name.release);
+        if (reboot_after && elapsed >= reboot_after) {
+            log_message("REBOOTING_AFTER_TEST");
+            if (reboot(RB_AUTOBOOT))
+                log_message("reboot failed: %s", strerror(errno));
+            reboot_after = 0;
+        }
     }
 }
