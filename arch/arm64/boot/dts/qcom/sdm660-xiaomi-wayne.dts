@@ -72,6 +72,16 @@
 	gpio-reserved-ranges = <8 4>;
 };
 
+/* Diagnostic: let the kernel take over a watchdog left running by firmware. */
+&{/soc@0} {
+	watchdog@17817000 {
+		compatible = "qcom,apss-wdt-sdm660", "qcom,kpss-wdt";
+		reg = <0x17817000 0x1000>;
+		clocks = <&sleep_clk>;
+		clock-names = "sleep";
+	};
+};
+
 &pon_pwrkey {
 	status = "okay";
 };

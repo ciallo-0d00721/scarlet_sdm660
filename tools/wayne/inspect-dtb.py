@@ -92,6 +92,9 @@ def inspect(path):
         ("/", "qcom,msm-id"): struct.pack(">2I", 317, 0),
         ("/chosen", "stdout-path"): b"serial0:115200n8\0",
         ("/soc@0/pinctrl@3100000", "gpio-reserved-ranges"): struct.pack(">2I", 8, 4),
+        ("/soc@0/watchdog@17817000", "compatible"): b"qcom,apss-wdt-sdm660\0qcom,kpss-wdt\0",
+        ("/soc@0/watchdog@17817000", "reg"): struct.pack(">2I", 0x17817000, 0x1000),
+        ("/soc@0/watchdog@17817000", "clock-names"): b"sleep\0",
         ("/soc@0/mmc@c0c4000", "status"): b"okay\0",
         ("/reserved-memory/ramoops@a0000000", "reg"): struct.pack(">4I", 0, 0xa0000000, 0, 0x400000),
         ("/reserved-memory/tzbuffer@94a00000", "reg"): struct.pack(">4I", 0, 0x94a00000, 0, 0x600000),
@@ -99,9 +102,15 @@ def inspect(path):
     for (node, prop), value in expected.items():
         if nodes.get(node, {}).get(prop) != value:
             raise ValueError(f"Unexpected Wayne property: {node}:{prop}")
+    sleep = nodes.get("/clocks/sleep-clk", {})
+    clock = nodes["/soc@0/watchdog@17817000"].get("clocks", b"")
+    if len(clock) != 4 or sleep.get("compatible") != b"fixed-clock\0" or \
+            clock != sleep.get("phandle"):
+        raise ValueError("Watchdog must use the inherited fixed sleep clock")
     return {"sha256": hashlib.sha256(data).hexdigest(), "bytes": total,
             "nodes": len(nodes), "board_checks_passed": len(expected),
             "static_reserved_ranges_checked": len(ranges),
+            "watchdog_clock_reference_checked": True,
             "validation_scope": "dtb structure, board properties and static reservations",
             "boot_tested": False, "schema_validated": False}
 
