@@ -198,6 +198,40 @@ static void probe_filesystems(void)
     log_message("fsprobe done");
 }
 
+static void mount_system(void)
+{
+    int i, ready = 0;
+
+    for (i = 0; i < 75; i++) {
+        if (access("/dev/mmcblk1p61", F_OK) == 0) {
+            ready = 1;
+            break;
+        }
+        usleep(200000);
+    }
+    if (!ready) {
+        log_message("sysmount p61 not ready");
+        return;
+    }
+    directory("/mnt");
+    directory("/mnt/system");
+    if (mount("/dev/mmcblk1p61", "/mnt/system", "ext4", MS_RDONLY, "noload")) {
+        log_message("sysmount p61: %s", strerror(errno));
+        return;
+    }
+    log_message("sysmount p61 ext4 ro noload mounted");
+    if (access("/mnt/system/build.prop", R_OK) == 0)
+        dump_text("/mnt/system/build.prop");
+    else if (access("/mnt/system/system/build.prop", R_OK) == 0)
+        dump_text("/mnt/system/system/build.prop");
+    else
+        log_message("sysmount build.prop not found");
+    if (umount2("/mnt/system", MNT_DETACH))
+        log_message("sysmount umount: %s", strerror(errno));
+    else
+        log_message("sysmount p61 unmounted");
+}
+
 int main(int argc, char **argv)
 {
     struct utsname name = {0};
@@ -253,6 +287,8 @@ int main(int argc, char **argv)
     list_directory("/sys/block");
     if (command_has("wayne.fs_probe=1"))
         probe_filesystems();
+    if (command_has("wayne.mount_system=1"))
+        mount_system();
     list_directory("/sys/fs/pstore");
     log_message("BRINGUP_READY; no disk partitions mounted");
     if (reboot_after)

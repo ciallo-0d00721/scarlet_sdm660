@@ -85,7 +85,8 @@
         "interconnect",
         "emmc",
         "block",
-        "fsprobe"
+        "fsprobe",
+        "sysmount"
       ],
       "default": "core"
     }

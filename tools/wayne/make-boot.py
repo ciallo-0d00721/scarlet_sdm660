@@ -35,7 +35,10 @@ PROFILES = {"standard": CMDLINE, "ram-probe": RAM_PROBE_CMDLINE,
                          " clk_ignore_unused pd_ignore_unused regulator_ignore_unused",
             "ram-fsprobe": RAM_PROBE_CMDLINE +
                            " clk_ignore_unused pd_ignore_unused regulator_ignore_unused "
-                           "wayne.fs_probe=1"}
+                           "wayne.fs_probe=1",
+            "ram-sysmount": RAM_PROBE_CMDLINE +
+                            " clk_ignore_unused pd_ignore_unused regulator_ignore_unused "
+                            "wayne.mount_system=1"}
 COMMON_REQUIRED = ("BLK_DEV_INITRD", "RD_GZIP", "BINFMT_ELF", "DEVTMPFS", "PROC_FS", "SYSFS",
                    "TMPFS", "PSTORE_RAM")
 PROFILE_REQUIRED = {
@@ -95,6 +98,18 @@ PROFILE_REQUIRED = {
                     "MMC", "MMC_SDHCI", "MMC_SDHCI_PLTFM", "MMC_SDHCI_MSM",
                     "MMC_CQHCI", "BLOCK", "MMC_BLOCK", "PARTITION_ADVANCED",
                     "EFI_PARTITION", "MSDOS_PARTITION", "CRC32"),
+    "ram-sysmount": ("VT_CONSOLE", "FB_SIMPLE", "FRAMEBUFFER_CONSOLE",
+                     "COMMON_CLK_QCOM", "QCOM_CLK_SMD_RPM", "SDM_GCC_660",
+                     "QCOM_GDSC", "PM_GENERIC_DOMAINS", "PM_GENERIC_DOMAINS_OF",
+                     "REGULATOR", "REGULATOR_FIXED_VOLTAGE",
+                     "REGULATOR_QCOM_SMD_RPM", "QCOM_RPMPD", "PM_OPP",
+                     "INTERCONNECT", "INTERCONNECT_CLK",
+                     "INTERCONNECT_QCOM", "INTERCONNECT_QCOM_SDM660",
+                     "INTERCONNECT_QCOM_SMD_RPM",
+                     "MMC", "MMC_SDHCI", "MMC_SDHCI_PLTFM", "MMC_SDHCI_MSM",
+                     "MMC_CQHCI", "BLOCK", "MMC_BLOCK", "PARTITION_ADVANCED",
+                     "EFI_PARTITION", "MSDOS_PARTITION", "CRC32",
+                     "EXT4_FS", "JBD2", "CRC16"),
 }
 RAM_PROBE_CPIO = pathlib.Path("ram-probe") / "initramfs.cpio"
 BASE = 0x80000000

@@ -299,3 +299,13 @@ phone returned to the original Android system with boot and recovery
 hashes unchanged. Some pstore bytes were corrupted. The fsprobe profile
 reuses the block kernel configuration, so the release string remains
 6.12.0-wayne-ram-block+.
+
+## Read-only system mount stage
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=sysmount tools/wayne/build-ram-probe.sh boot
+
+This stage adds ext4, JBD2 and CRC16 to the block configuration in a
+172-value checked fragment. The init waits for /dev/mmcblk1p61, mounts it
+read-only with the ext4 noload option, reads build.prop, then unmounts.
+It does not replay the journal or write any data. Physical validation is
+pending.
