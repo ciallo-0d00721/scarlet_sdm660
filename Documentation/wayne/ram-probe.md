@@ -258,4 +258,18 @@ This stage adds the block layer, MMC block driver, 64 minors per device,
 GPT/MSDOS partition parsers and CRC32 to the eMMC configuration in a
 169-value checked fragment. The initramfs still does not mount any partition;
 the kernel only reads the partition table and creates mmcblk0/pN nodes.
-No filesystem or write path is enabled. Physical validation is pending.
+No filesystem or write path is enabled.
+
+Physical validation passed on 2026-11-06 at commit
+4fb813d1c2b4c93e72eeb1e0ae4dfbbfe25d105a. The 64 MiB image (SHA-256
+0bd2c906a0c1aaa7c16cf62a379c5145531c440c130646d592e02f0a6fdbac32) and its
+compact form
+(f0fcd115c1b362c81f1c8aca695bb106364ff4374696aa9aaf6d77ee5e92b8e4)
+reached PID 1 on the physical phone. Pstore recorded the HS200 MMC card,
+an mmcblk1 device of 116 GiB, mmcblk1boot0/mmcblk1boot1/mmcblk1rpmb, and a
+read-only partition scan p1..p64 including p61. The controller printed
+"Reset 0x1 never completed" once during probe and not during the scan.
+No filesystem was mounted: the init only listed /sys/block/mmcblk1 and no
+mount occurred. The phone returned to the original Android system; boot
+and recovery hashes still matched their read-only backups. Some pstore
+bytes were corrupted.
