@@ -87,7 +87,8 @@
         "block",
         "fsprobe",
         "sysmount",
-        "mmcc"
+        "mmcc",
+        "usb2"
       ],
       "default": "core"
     }

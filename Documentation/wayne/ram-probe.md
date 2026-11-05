@@ -348,3 +348,13 @@ controller and card still probed, the heartbeats and the 90 second reboot
 followed, and the phone returned to the original Android system with boot
 and recovery hashes unchanged. No fatal markers appeared. Some pstore
 bytes were corrupted.
+
+## USB2 gadget stage
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=usb2 tools/wayne/build-ram-probe.sh boot
+
+This stage adds USB, DWC3 QCOM gadget, QUSB2 PHY, NVMEM and g_serial to the
+MMCC configuration in a 183-value checked fragment. The wayne DTS already
+limits usb3_dwc3 to qusb2phy0 and peripheral/high-speed mode. The profile
+keeps tty0 as console and enables the CDC-ACM gadget for host-side
+enumeration. Physical validation is pending.
