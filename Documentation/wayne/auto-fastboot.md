@@ -119,3 +119,17 @@ The follow-up `usb2guardcore` stage binds both DWC3 drivers but blacklists
 `gserial_init`; `usb2guardfull` restores the serial gadget. These two
 profiles use the same payload and USB console command line and differ
 only in that blacklist. A QEMU pass does not establish USB enumeration.
+
+In the next comparison, both images were packed from the same guarded
+USB2 kernel. Build/pack revision `92ed676d3904` reached PID 1 with
+`gserial_init` disabled and returned to Fastboot after approximately
+71 seconds. The persisted core trace includes an initial deferred probe,
+so this does not establish that DWC3 or the PHY was operational. The
+full-gadget image returned to Fastboot after approximately 9 seconds
+without an observed CDC ACM device. This narrows the failing case to
+enabling the gadget with its USB console; the final panic trace is still
+pending collection from the original OS.
+
+The follow-up stage `usb2guardnousbconsole` keeps the CDC ACM gadget and
+removes only the ttyGS0 kernel console argument. Its behavior on the
+phone still needs testing.

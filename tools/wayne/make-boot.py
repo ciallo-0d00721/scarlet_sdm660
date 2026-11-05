@@ -70,6 +70,8 @@ USB_GUARD_CMDLINE = BOOTGUARD_CMDLINE.replace(
 USB_GUARD_PROFILES = {
     "ram-usb2-guard-core": USB_GUARD_CMDLINE + " initcall_blacklist=gserial_init",
     "ram-usb2-guard-full": USB_GUARD_CMDLINE,
+    "ram-usb2-guard-no-usb-console": USB_GUARD_CMDLINE.replace(
+        " console=ttyGS0,115200n8", ""),
     "ram-usb2-guard-nodwc3": BOOTGUARD_CMDLINE +
         " initcall_blacklist=dwc3_driver_init,dwc3_qcom_driver_init",
     "ram-usb2-guard-wrapper": BOOTGUARD_CMDLINE +
