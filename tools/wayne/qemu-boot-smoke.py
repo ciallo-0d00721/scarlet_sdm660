@@ -145,6 +145,8 @@ def smoke(args):
         required += ['AUTO_REBOOT_AFTER=30 seconds', 'REBOOTING_AFTER_TEST']
         if 'wayne.reboot_mode=bootloader' in tokens:
             required.append('REBOOT_TARGET=bootloader')
+    if 'wayne.usb_deferred=1' in tokens:
+        required += ['USB_DEFERRED_START', 'USB_DEFERRED_RESULT']
     markers = {key: key in text for key in required}
     confirmed = {name: ('initcall ' + name + ' blacklisted') in text for name in blacklists}
     report.update({'exit_code': code, 'markers': markers, 'blacklists': confirmed,

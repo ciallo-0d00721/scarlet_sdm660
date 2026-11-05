@@ -139,6 +139,29 @@ static int command_has(const char *needle)
     return found;
 }
 
+static void enable_usb_gadget(void)
+{
+    int fd, saved_errno;
+    ssize_t written;
+
+    list_directory("/sys/class/udc");
+    log_message("USB_DEFERRED_START");
+    fd = open("/sys/module/g_serial/parameters/enable", O_WRONLY | O_CLOEXEC);
+    if (fd < 0) {
+        log_message("USB_DEFERRED_RESULT open failed: %s", strerror(errno));
+        return;
+    }
+    written = write(fd, "1\n", 2);
+    saved_errno = errno;
+    close(fd);
+    if (written == 2)
+        log_message("USB_DEFERRED_RESULT enabled");
+    else if (written < 0)
+        log_message("USB_DEFERRED_RESULT write failed: %s", strerror(saved_errno));
+    else
+        log_message("USB_DEFERRED_RESULT short write: %zd", written);
+}
+
 static int reboot_to_bootloader(void)
 {
     return (int)syscall(SYS_reboot, LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2,
@@ -255,6 +278,7 @@ int main(int argc, char **argv)
     unsigned int reboot_after;
     int bootloader_target;
     int test_pid1_exit;
+    int deferred_usb;
     int console;
     if (argc == 2 && !strcmp(argv[1], "--self-test")) {
         if (parse_reboot_argument("wayne.reboot_after=30") != 30 ||
@@ -294,6 +318,7 @@ int main(int argc, char **argv)
     reboot_after = read_reboot_timer();
     bootloader_target = command_has("wayne.reboot_mode=bootloader");
     test_pid1_exit = command_has("wayne.test_pid1_exit=1");
+    deferred_usb = command_has("wayne.usb_deferred=1");
     mount_ram_filesystem("sysfs", "/sys");
     directory("/sys/fs/pstore");
     mount_ram_filesystem("pstore", "/sys/fs/pstore");
@@ -324,6 +349,10 @@ int main(int argc, char **argv)
         if (test_pid1_exit && elapsed >= 5) {
             log_message("WAYNE_TEST_PID1_EXIT");
             _exit(1);
+        }
+        if (deferred_usb && elapsed >= 10) {
+            deferred_usb = 0;
+            enable_usb_gadget();
         }
         if (reboot_after && elapsed >= reboot_after) {
             log_message("REBOOTING_AFTER_TEST");

@@ -130,6 +130,15 @@ without an observed CDC ACM device. This narrows the failing case to
 enabling the gadget with its USB console; the final panic trace is still
 pending collection from the original OS.
 
-The follow-up stage `usb2guardnousbconsole` keeps the CDC ACM gadget and
-removes only the ttyGS0 kernel console argument. Its behavior on the
-phone still needs testing.
+The `usb2guardnousbconsole` stage kept CDC ACM and removed the ttyGS0
+console argument. It also returned to Fastboot after about 9 seconds
+without enumerating a CDC ACM device. The pstore retrieved from the
+full-gadget trial contained an earlier vendor 4.19 boot, so its DWC3
+messages cannot diagnose the 6.12 restart.
+
+The `usb2guarddeferred` stage uses the existing g_serial runtime
+parameter. It starts with the gadget disabled and, 10 seconds after
+the diagnostic init reports readiness, logs the UDC list and attempts
+to enable CDC ACM. This separates the runtime enable from early boot
+and leaves the Fastboot deadline armed. QEMU checks that the init
+reaches and returns from the enable attempt.
