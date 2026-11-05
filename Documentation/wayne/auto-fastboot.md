@@ -91,3 +91,22 @@ approximately 52 seconds. Its userspace timer was set to 180 seconds;
 pstore retained the 45-second kernel-deadline message with some damaged
 characters. This validates recovery independently of the userspace timer
 while kernel work can still run.
+
+## USB wrapper bisection
+
+The guarded USB images keep the same kernel and embedded initramfs. The
+reference `usb2guardnodwc3` skips both DWC3 drivers; the
+`usb2guardwrapper` stage skips the DWC3 core alone. The QCOM wrapper in
+the second image can perform its reset, clock, and QSCRATCH operations,
+but it cannot bind a DWC3 core or run its PHY initialization callbacks.
+The tests only isolate this early path; neither stage should provide a
+working USB gadget.
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=usb2guardnodwc3 tools/wayne/build-ram-probe.sh boot
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=usb2guardwrapper tools/wayne/build-ram-probe.sh boot
+
+Both should have the PM660 PON reason armed before probing the USB
+controller. Check pstore for the PID 1 marker and the probe outcome,
+and use the Fastboot protocol to verify recovery. The packed images
+must have the same payload hash and the QEMU harness must confirm the
+exact blacklist for each variant.

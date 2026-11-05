@@ -92,9 +92,12 @@
         "usb2nodrv",
         "usb2nodwc3",
         "usb2nophy",
+        "usb2guardnodwc3",
+        "usb2guardwrapper",
         "bootguard",
         "bootguardwdt",
-        "bootguardpanic"
+        "bootguardpanic",
+        "bootguarddeadline"
       ],
       "default": "core"
     }

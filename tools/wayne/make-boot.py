@@ -65,6 +65,14 @@ BOOTGUARD_CMDLINE = (RAM_PROBE_CMDLINE.replace("panic=0", "panic=5")
                     "qcom_wdt.boot_timeout=30 watchdog.open_timeout=120 wayne.bootguard_deadline=150")
 BOOTGUARD_PROFILES = ("ram-bootguard", "ram-bootguard-wdt", "ram-bootguard-panic",
                       "ram-bootguard-deadline")
+USB_GUARD_PROFILES = {
+    "ram-usb2-guard-nodwc3": BOOTGUARD_CMDLINE +
+        " initcall_blacklist=dwc3_driver_init,dwc3_qcom_driver_init",
+    "ram-usb2-guard-wrapper": BOOTGUARD_CMDLINE +
+        " initcall_blacklist=dwc3_driver_init",
+}
+BOOTGUARD_PROFILES += tuple(USB_GUARD_PROFILES)
+PROFILES.update(USB_GUARD_PROFILES)
 PROFILES.update({
     "ram-bootguard": BOOTGUARD_CMDLINE,
     "ram-bootguard-wdt": BOOTGUARD_CMDLINE.replace("wayne.reboot_after=60", "wayne.reboot_after=75") +
@@ -224,7 +232,7 @@ PROFILE_REQUIRED = {
                          "U_SERIAL_CONSOLE"),
 }
 PROFILE_REQUIRED.update({
-    name: PROFILE_REQUIRED["ram-mmcc"] + (
+    name: PROFILE_REQUIRED["ram-usb2" if name in USB_GUARD_PROFILES else "ram-mmcc"] + (
         "WATCHDOG", "WATCHDOG_CORE", "WATCHDOG_NOWAYOUT", "WATCHDOG_HANDLE_BOOT_ENABLED",
         "QCOM_WDT", "MFD_SYSCON", "SYSCON_REBOOT_MODE", "REBOOT_MODE",
         "QCOM_WAYNE_BOOTGUARD", "SPMI", "SPMI_MSM_PMIC_ARB",

@@ -23,6 +23,10 @@ case "$stage" in
     usb2nodrv) name=ram-usb2; defconfig=wayne_ram_usb2_defconfig; boot_profile=ram-usb2-nodrv ;;
     usb2nophy) name=ram-usb2; defconfig=wayne_ram_usb2_defconfig; boot_profile=ram-usb2-nophy ;;
     usb2nodwc3) name=ram-usb2; defconfig=wayne_ram_usb2_defconfig; boot_profile=ram-usb2-nodwc3 ;;
+    usb2guardnodwc3) name=ram-usb2-guard; defconfig=wayne_ram_usb2_guard_defconfig
+        boot_profile=ram-usb2-guard-nodwc3 ;;
+    usb2guardwrapper) name=ram-usb2-guard; defconfig=wayne_ram_usb2_guard_defconfig
+        boot_profile=ram-usb2-guard-wrapper ;;
     bootguard) name=ram-bootguard; defconfig=wayne_ram_bootguard_defconfig; boot_profile=ram-bootguard ;;
     bootguardwdt) name=ram-bootguard; defconfig=wayne_ram_bootguard_defconfig; boot_profile=ram-bootguard-wdt ;;
     bootguarddeadline) name=ram-bootguard; defconfig=wayne_ram_bootguard_defconfig
