@@ -273,3 +273,13 @@ No filesystem was mounted: the init only listed /sys/block/mmcblk1 and no
 mount occurred. The phone returned to the original Android system; boot
 and recovery hashes still matched their read-only backups. Some pstore
 bytes were corrupted.
+
+## Read-only filesystem probe stage
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=fsprobe tools/wayne/build-ram-probe.sh boot
+
+This stage reuses the block configuration and adds a read-only superblock
+probe to the diagnostic init. It waits for /dev/mmcblk1p61, reads 2 KiB from
+each p1..p64 partition without mounting, and reports ext4/f2fs/EROFS/SquashFS
+magic plus the ext4 volume label and UUID. No filesystem is mounted or
+written. Physical validation is pending.

@@ -84,7 +84,8 @@
         "rpmpd",
         "interconnect",
         "emmc",
-        "block"
+        "block",
+        "fsprobe"
       ],
       "default": "core"
     }

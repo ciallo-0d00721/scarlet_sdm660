@@ -117,6 +117,87 @@ static unsigned int read_reboot_timer(void)
     return seconds;
 }
 
+static int command_has(const char *needle)
+{
+    FILE *file = fopen("/proc/cmdline", "r");
+    char command[4096];
+    int found = 0;
+    if (!file)
+        return 0;
+    if (fgets(command, sizeof(command), file))
+        found = strstr(command, needle) != NULL;
+    fclose(file);
+    return found;
+}
+
+static unsigned int read_le32(const unsigned char *p)
+{
+    return (unsigned int)p[0] | ((unsigned int)p[1] << 8) |
+           ((unsigned int)p[2] << 16) | ((unsigned int)p[3] << 24);
+}
+
+static int probe_partition(int index)
+{
+    char path[64], label[17], uuid[37];
+    unsigned char buffer[2048];
+    ssize_t got;
+    int fd, i;
+
+    snprintf(path, sizeof(path), "/dev/mmcblk1p%d", index);
+    fd = open(path, O_RDONLY | O_CLOEXEC | O_NONBLOCK);
+    if (fd < 0)
+        return 0;
+    got = pread(fd, buffer, sizeof(buffer), 0);
+    close(fd);
+    if (got < 1082) {
+        log_message("fsprobe p%d short read %zd", index, got);
+        return 0;
+    }
+    if (buffer[1080] == 0x53 && buffer[1081] == 0xef) {
+        memcpy(label, buffer + 1144, 16);
+        label[16] = '\0';
+        for (i = 0; i < 16; i++) {
+            if (label[i] < 0x20 || label[i] > 0x7e)
+                label[i] = '.';
+        }
+        for (i = 0; i < 16; i++)
+            snprintf(uuid + i * 2, 3, "%02x", buffer[1128 + i]);
+        log_message("fsprobe p%d ext4 label=%s uuid=%s", index, label, uuid);
+        return 1;
+    }
+    if (read_le32(buffer + 1024) == 0xf2f52010) {
+        log_message("fsprobe p%d f2fs", index);
+        return 1;
+    }
+    if (read_le32(buffer + 1024) == 0xe0f5e1e2) {
+        log_message("fsprobe p%d erofs", index);
+        return 1;
+    }
+    if (read_le32(buffer) == 0x73717368) {
+        log_message("fsprobe p%d squashfs", index);
+        return 1;
+    }
+    log_message("fsprobe p%d unknown magic=%02x%02x%02x%02x", index,
+                buffer[0], buffer[1], buffer[2], buffer[3]);
+    return 0;
+}
+
+static void probe_filesystems(void)
+{
+    int i, ready = 0;
+    for (i = 0; i < 75; i++) {
+        if (access("/dev/mmcblk1p61", F_OK) == 0) {
+            ready = 1;
+            break;
+        }
+        usleep(200000);
+    }
+    log_message("fsprobe start ready=%d", ready);
+    for (i = 1; i <= 64; i++)
+        probe_partition(i);
+    log_message("fsprobe done");
+}
+
 int main(int argc, char **argv)
 {
     struct utsname name = {0};
@@ -170,6 +251,8 @@ int main(int argc, char **argv)
     dump_text("/proc/iomem");
     list_directory("/sys/class/mmc_host");
     list_directory("/sys/block");
+    if (command_has("wayne.fs_probe=1"))
+        probe_filesystems();
     list_directory("/sys/fs/pstore");
     log_message("BRINGUP_READY; no disk partitions mounted");
     if (reboot_after)
