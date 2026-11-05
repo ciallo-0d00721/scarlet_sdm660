@@ -282,4 +282,20 @@ This stage reuses the block configuration and adds a read-only superblock
 probe to the diagnostic init. It waits for /dev/mmcblk1p61, reads 2 KiB from
 each p1..p64 partition without mounting, and reports ext4/f2fs/EROFS/SquashFS
 magic plus the ext4 volume label and UUID. No filesystem is mounted or
-written. Physical validation is pending.
+written.
+
+Physical validation passed on 2026-11-06 at commit
+63e5fe62177a8b8da6c4ef7452775feb4e174309. The 64 MiB image (SHA-256
+5af64bdbf6b50982045d755d85c463c1464786f23c837449857485057831db15) and its
+compact form
+(2fe669888c8750e292cb366612abef83b9ae917e495f05f0ecdf1e5d57142c30)
+reached PID 1 on the physical phone and read 2 KiB from p1..p64 without
+mounting. The probe identified p61 as ext4 with label System and p63 as
+ext4 with label product; p48 and p60 also carried ext4 superblocks. The
+remaining partitions reported ELF or unknown magic, consistent with boot
+and vendor images. No f2fs or EROFS superblock was found. BRINGUP_READY
+was logged, the controller printed Reset 0x1 once during probe, and the
+phone returned to the original Android system with boot and recovery
+hashes unchanged. Some pstore bytes were corrupted. The fsprobe profile
+reuses the block kernel configuration, so the release string remains
+6.12.0-wayne-ram-block+.
