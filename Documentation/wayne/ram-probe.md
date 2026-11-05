@@ -149,4 +149,19 @@ The ram-rails packer profile requires those regulator drivers and appends
 regulator_ignore_unused to the retained-clock/domain command line. This
 prevents unused-rail cleanup but deliberately does not bypass regulator
 registration or its initial constraints. SPMI, storage and USB remain off.
-Outputs use out-6.12-ram-rails. Physical validation of this stage is pending.
+Outputs use out-6.12-ram-rails.
+
+Physical validation passed on 2026-11-05 at commit
+8525e8612111187bdad6a019ac8d0a38b9e5de3c. The 64 MiB image (SHA-256
+f72be6c0ca1fb0632c1a91adcb121077993778dffcc7f1413d84e3bba8d0537b) and its
+compact form (fd97e949562af32a6d600b793ebe8746503a4f0aed33b210718976f1900ba6dd)
+reached PID 1 on the physical phone. Pstore recorded both RPM regulator groups
+probing successfully (regulators-0 and regulators-1 returned 0), the
+"Not disabling unused regulators" message from regulator_ignore_unused, PID 1
+heartbeats at about 32 and 62 seconds, REBOOTING_AFTER_TEST at about 92 seconds,
+shutdown callbacks for both qcom_rpm_smd_regulator devices, and
+"reboot: Restarting system". No panic, SError or failed probe was present.
+The phone returned to the original Android system; boot and recovery hashes
+still matched their read-only backups. This establishes provider registration
+and initial constraints in the RAM-only profile. The eMMC and USB consumers
+remain disabled, so it does not establish regulator behavior under load.
