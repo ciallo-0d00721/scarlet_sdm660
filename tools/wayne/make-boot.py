@@ -20,12 +20,15 @@ CMDLINE = ("earlycon=msm_serial_dm,0xc170000 console=tty0 fbcon=font:TER16x32 co
 RAM_PROBE_CMDLINE = ("console=tty0 fbcon=font:TER16x32 maxcpus=1 log_buf_len=1M rdinit=/init "
                      "loglevel=8 ignore_loglevel initcall_debug printk.devkmsg=on nokaslr "
                      "panic=0 wayne.reboot_after=90")
-PROFILES = {"standard": CMDLINE, "ram-probe": RAM_PROBE_CMDLINE}
+PROFILES = {"standard": CMDLINE, "ram-probe": RAM_PROBE_CMDLINE,
+            "ram-clocks": RAM_PROBE_CMDLINE + " clk_ignore_unused"}
 COMMON_REQUIRED = ("BLK_DEV_INITRD", "RD_GZIP", "BINFMT_ELF", "DEVTMPFS", "PROC_FS", "SYSFS",
                    "TMPFS", "PSTORE_RAM")
 PROFILE_REQUIRED = {
     "standard": ("SERIAL_MSM_CONSOLE", "SERIAL_EARLYCON"),
     "ram-probe": ("VT_CONSOLE", "FB_SIMPLE", "FRAMEBUFFER_CONSOLE"),
+    "ram-clocks": ("VT_CONSOLE", "FB_SIMPLE", "FRAMEBUFFER_CONSOLE",
+                   "COMMON_CLK_QCOM", "QCOM_CLK_SMD_RPM"),
 }
 RAM_PROBE_CPIO = pathlib.Path("ram-probe") / "initramfs.cpio"
 BASE = 0x80000000
@@ -114,7 +117,7 @@ def check_config(config, profile):
     for symbol in COMMON_REQUIRED + PROFILE_REQUIRED[profile]:
         if f"CONFIG_{symbol}=y" not in lines:
             raise ValueError(f"Missing built-in requirement: {symbol}")
-    if profile == "ram-probe":
+    if profile != "standard":
         if 'CONFIG_INITRAMFS_SOURCE="ram-probe/initramfs.cpio"' not in lines:
             raise ValueError('RAM probe requires CONFIG_INITRAMFS_SOURCE="ram-probe/initramfs.cpio"')
         if "CONFIG_INITRAMFS_COMPRESSION_NONE=y" not in lines:
@@ -192,7 +195,7 @@ def build(source, out, output, mkbootimg, profile="standard"):
     kernel_path.write_bytes(kernel)
     ramdisk, init_data, cpio = build_ramdisk(out, output)
     ramdisk_path = output / "ramdisk.cpio.gz"
-    if profile == "ram-probe":
+    if profile != "standard":
         cpio_path = out / RAM_PROBE_CPIO
         if not cpio_path.is_file():
             raise ValueError("Missing out/ram-probe/initramfs.cpio; generate it before the Image")
@@ -229,7 +232,7 @@ def build(source, out, output, mkbootimg, profile="standard"):
               "device_boot_tested": False, "android14_vendor_compatible": False,
               "signed": False, "qemu_smoke_tested": False,
               "address_note": "ARM64-aligned RAM placement; Wayne bootloader handling remains untested"}
-    if profile == "ram-probe":
+    if profile != "standard":
         report.update({
             "embedded_initramfs_source": RAM_PROBE_CPIO.as_posix(),
             "embedded_initramfs_bytes": len(cpio),
@@ -246,7 +249,7 @@ if __name__ == "__main__":
     parser.add_argument("--build-out", required=True, type=pathlib.Path)
     parser.add_argument("--output", required=True, type=pathlib.Path)
     parser.add_argument("--mkbootimg", default="mkbootimg")
-    parser.add_argument("--profile", choices=("standard", "ram-probe"), default="standard")
+    parser.add_argument("--profile", choices=tuple(PROFILES), default="standard")
     args = parser.parse_args()
     build(args.source.resolve(), args.build_out.resolve(), args.output.resolve(), args.mkbootimg,
           profile=args.profile)

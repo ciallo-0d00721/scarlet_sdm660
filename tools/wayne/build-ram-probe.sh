@@ -3,11 +3,13 @@
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 stage=${WAYNE_RAM_PROBE_STAGE:-core}
+boot_profile=ram-probe
 case "$stage" in
     core) name=ram-probe; defconfig=wayne_ram_probe_defconfig ;;
     scm) name=ram-scm; defconfig=wayne_ram_scm_defconfig ;;
     tlmm) name=ram-tlmm; defconfig=wayne_ram_tlmm_defconfig ;;
     rpm) name=ram-rpm; defconfig=wayne_ram_rpm_defconfig ;;
+    rpmclk) name=ram-rpmclk; defconfig=wayne_ram_rpmclk_defconfig; boot_profile=ram-clocks ;;
     *) echo "Unknown RAM probe stage: $stage" >&2; exit 1 ;;
 esac
 out=${WAYNE_RAM_PROBE_OUT:-${WAYNE_OUT:-"$root/../out-6.12-$name"}}
@@ -58,4 +60,4 @@ sha256sum "$out/arch/arm64/boot/Image.gz"
 packer=${WAYNE_MKBOOTIMG:-"$root/../mkbootimg-aosp-android11.py"}
 [[ -f $packer ]] || { echo 'Prepare AOSP mkbootimg; see Documentation/wayne/boot.md.' >&2; exit 1; }
 python3 "$root/tools/wayne/make-boot.py" --source "$root" --build-out "$out" \
-    --output "$boot_out" --mkbootimg "$packer" --profile ram-probe
+    --output "$boot_out" --mkbootimg "$packer" --profile "$boot_profile"

@@ -80,4 +80,24 @@ did not select REGMAP_MMIO. In this minimal profile, olddefconfig dropped
 both requested REGMAP and REGMAP_MMIO before the fix. Adding the missing
 REGMAP_MMIO selection makes all 146 requirements survive. This dependency
 fix applies only when QCOM_APCS_IPC is selected and adds no unrelated hardware
-driver. RPM-stage physical validation is pending.
+driver. The RPM-stage image at
+fc113cbbf966bf6d31dd632fdcdd942f4e8fbad9 reached PID 1 and a 30-second
+heartbeat on the physical phone. Pstore recorded successful probes of the
+APCS mailbox, GLINK RPM edge and rpm_requests endpoint, plus PID 1 and the
+planned reboot at about 92 seconds. This tests transport registration and
+channel setup; it does not test the later clock/regulator requests.
+
+## RPM clock isolation stage
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=rpmclk tools/wayne/build-ram-probe.sh boot
+
+This stage adds QCOM_CLK_SMD_RPM and the generic Qualcomm clock/interconnect/
+reset dependencies in a 151-value checked fragment, using separate
+out-6.12-ram-rpmclk outputs. GCC, regulator and power-domain clients remain
+disabled. The new ram-clocks packer profile retains all embedded-initramfs
+and framebuffer checks, additionally requires the RPM clock driver, and adds
+clk_ignore_unused to the prior RAM-probe command line. This deliberately
+retains firmware clocks while the RPM clock provider is first handed over.
+Unlike the previous SCM/TLMM steps, this stage changes that command-line
+parameter as well as the stated clock configuration. Physical validation
+of the RPM-clock stage is pending.
