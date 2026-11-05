@@ -17,6 +17,17 @@ CMDLINE = ("earlycon=msm_serial_dm,0xc170000 console=tty0 fbcon=font:TER16x32 co
            "console=ttyGS0,115200n8 g_serial.use_acm=1 g_serial.n_ports=1 log_buf_len=1M "
            "rdinit=/init loglevel=8 ignore_loglevel initcall_debug printk.devkmsg=on nokaslr "
            "clk_ignore_unused pd_ignore_unused panic=0")
+RAM_PROBE_CMDLINE = ("console=tty0 fbcon=font:TER16x32 maxcpus=1 log_buf_len=1M rdinit=/init "
+                     "loglevel=8 ignore_loglevel initcall_debug printk.devkmsg=on nokaslr "
+                     "panic=0 wayne.reboot_after=90")
+PROFILES = {"standard": CMDLINE, "ram-probe": RAM_PROBE_CMDLINE}
+COMMON_REQUIRED = ("BLK_DEV_INITRD", "RD_GZIP", "BINFMT_ELF", "DEVTMPFS", "PROC_FS", "SYSFS",
+                   "TMPFS", "PSTORE_RAM")
+PROFILE_REQUIRED = {
+    "standard": ("SERIAL_MSM_CONSOLE", "SERIAL_EARLYCON"),
+    "ram-probe": ("VT_CONSOLE", "FB_SIMPLE", "FRAMEBUFFER_CONSOLE"),
+}
+RAM_PROBE_CPIO = pathlib.Path("ram-probe") / "initramfs.cpio"
 BASE = 0x80000000
 RAMDISK_ADDRESS = 0x84000000
 TAGS_ADDRESS = 0x83E00000
@@ -62,7 +73,7 @@ def check_source(source):
     return metadata, git(source, "rev-parse", "HEAD")
 
 
-def check_boot(data, kernel, ramdisk):
+def check_boot(data, kernel, ramdisk, cmdline=CMDLINE):
     if data[:8] != b"ANDROID!":
         raise ValueError("Invalid Android boot magic")
     fields = struct.unpack_from("<10I", data, 8)
@@ -75,7 +86,7 @@ def check_boot(data, kernel, ramdisk):
         raise ValueError("Unexpected v1 extended header")
     command = (data[64:576].split(b"\0", 1)[0] +
                data[608:1632].split(b"\0", 1)[0]).decode()
-    if command != CMDLINE:
+    if command != cmdline:
         raise ValueError("Unexpected kernel command line")
     ramdisk_offset = (PAGE + ks + PAGE - 1) // PAGE * PAGE
     end = (ramdisk_offset + rs + PAGE - 1) // PAGE * PAGE
@@ -98,43 +109,20 @@ def check_boot(data, kernel, ramdisk):
             "zero_padding_verified": True}
 
 
-def build(source, out, output, mkbootimg):
-    source = pathlib.Path(source).resolve()
-    out = pathlib.Path(out).resolve()
-    output = pathlib.Path(output).resolve()
-    metadata, source_commit = check_source(source)
-    output.mkdir(parents=True, exist_ok=True)
-    config = (out / ".config").read_text()
-    for symbol in ("BLK_DEV_INITRD", "RD_GZIP", "BINFMT_ELF", "DEVTMPFS", "PROC_FS", "SYSFS",
-                   "TMPFS", "SERIAL_MSM_CONSOLE", "SERIAL_EARLYCON", "PSTORE_RAM"):
-        if f"CONFIG_{symbol}=y" not in config.splitlines():
+def check_config(config, profile):
+    lines = config.splitlines()
+    for symbol in COMMON_REQUIRED + PROFILE_REQUIRED[profile]:
+        if f"CONFIG_{symbol}=y" not in lines:
             raise ValueError(f"Missing built-in requirement: {symbol}")
-    release = (out / "include/config/kernel.release").read_text().strip()
-    if not release.startswith("6.12.0"):
-        raise ValueError(f"Unexpected kernel release: {release!r}")
-    image_gz = (out / "arch/arm64/boot/Image.gz").read_bytes()
-    raw = gzip.decompress(image_gz)
-    if release.encode() not in raw:
-        raise ValueError("Built Image does not contain the configured kernel release; "
-                         "refusing stale or mismatched build output")
-    if raw[56:60] != b"ARM\x64":
-        raise ValueError("Not an ARM64 Image")
-    text_offset, image_size = struct.unpack_from("<QQ", raw, 8)
-    if text_offset != 0 or not image_size or BASE + image_size > TAGS_ADDRESS:
-        raise ValueError("Kernel placement needs review; would overlap the DTB window")
-    dtb_path = out / "arch/arm64/boot/dts/qcom/sdm660-xiaomi-wayne.dtb"
-    spec = importlib.util.spec_from_file_location("wayne_dtb", HERE / "inspect-dtb.py")
-    validator = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(validator)
-    dtb_result = validator.inspect(dtb_path)
-    dtb = dtb_path.read_bytes()
-    if len(dtb) > RAMDISK_ADDRESS - TAGS_ADDRESS:
-        raise ValueError("DTB overlaps ramdisk window")
-    kernel = image_gz + dtb
-    if BASE + len(kernel) > TAGS_ADDRESS:
-        raise ValueError("Compressed kernel payload overlaps DTB window")
-    kernel_path = output / "Image.gz-dtb"
-    kernel_path.write_bytes(kernel)
+    if profile == "ram-probe":
+        if 'CONFIG_INITRAMFS_SOURCE="ram-probe/initramfs.cpio"' not in lines:
+            raise ValueError('RAM probe requires CONFIG_INITRAMFS_SOURCE="ram-probe/initramfs.cpio"')
+        if "CONFIG_INITRAMFS_COMPRESSION_NONE=y" not in lines:
+            raise ValueError("RAM probe requires CONFIG_INITRAMFS_COMPRESSION_NONE=y")
+
+
+def build_ramdisk(out, output):
+    output.mkdir(parents=True, exist_ok=True)
     init = output / "init"
     subprocess.run(["aarch64-linux-gnu-gcc", "-static", "-Os", "-std=c11",
                     "-Wall", "-Wextra", "-Werror", "-Wl,--build-id=none",
@@ -162,6 +150,57 @@ def build(source, out, output, mkbootimg):
         raise ValueError("Ramdisk would overlap the first reserved-memory window")
     ramdisk_path = output / "ramdisk.cpio.gz"
     ramdisk_path.write_bytes(ramdisk)
+    return ramdisk, init_data, cpio
+
+
+def build(source, out, output, mkbootimg, profile="standard"):
+    if profile not in PROFILES:
+        raise ValueError(f"Unknown profile: {profile}")
+    cmdline = PROFILES[profile]
+    source = pathlib.Path(source).resolve()
+    out = pathlib.Path(out).resolve()
+    output = pathlib.Path(output).resolve()
+    metadata, source_commit = check_source(source)
+    output.mkdir(parents=True, exist_ok=True)
+    config = (out / ".config").read_text()
+    check_config(config, profile)
+    release = (out / "include/config/kernel.release").read_text().strip()
+    if not release.startswith("6.12.0"):
+        raise ValueError(f"Unexpected kernel release: {release!r}")
+    image_gz = (out / "arch/arm64/boot/Image.gz").read_bytes()
+    raw = gzip.decompress(image_gz)
+    if release.encode() not in raw:
+        raise ValueError("Built Image does not contain the configured kernel release; "
+                         "refusing stale or mismatched build output")
+    if raw[56:60] != b"ARM\x64":
+        raise ValueError("Not an ARM64 Image")
+    text_offset, image_size = struct.unpack_from("<QQ", raw, 8)
+    if text_offset != 0 or not image_size or BASE + image_size > TAGS_ADDRESS:
+        raise ValueError("Kernel placement needs review; would overlap the DTB window")
+    dtb_path = out / "arch/arm64/boot/dts/qcom/sdm660-xiaomi-wayne.dtb"
+    spec = importlib.util.spec_from_file_location("wayne_dtb", HERE / "inspect-dtb.py")
+    validator = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(validator)
+    dtb_result = validator.inspect(dtb_path)
+    dtb = dtb_path.read_bytes()
+    if len(dtb) > RAMDISK_ADDRESS - TAGS_ADDRESS:
+        raise ValueError("DTB overlaps ramdisk window")
+    kernel = image_gz + dtb
+    if BASE + len(kernel) > TAGS_ADDRESS:
+        raise ValueError("Compressed kernel payload overlaps DTB window")
+    kernel_path = output / "Image.gz-dtb"
+    kernel_path.write_bytes(kernel)
+    ramdisk, init_data, cpio = build_ramdisk(out, output)
+    ramdisk_path = output / "ramdisk.cpio.gz"
+    if profile == "ram-probe":
+        cpio_path = out / RAM_PROBE_CPIO
+        if not cpio_path.is_file():
+            raise ValueError("Missing out/ram-probe/initramfs.cpio; generate it before the Image")
+        if cpio != cpio_path.read_bytes():
+            raise ValueError("Regenerated initramfs cpio differs from out/ram-probe/initramfs.cpio")
+        if not cpio or cpio not in raw:
+            raise ValueError("Built Image does not contain the ram-probe initramfs cpio; "
+                             "refusing stale or mismatched build output")
     compact = output / "boot-compact.img"
     boot = output / "boot.img"
     packer = [sys.executable, str(mkbootimg)] if mkbootimg.endswith(".py") else [mkbootimg]
@@ -169,13 +208,14 @@ def build(source, out, output, mkbootimg):
                     "--header_version", "1", "--pagesize", str(PAGE), "--base", hex(BASE),
                     "--kernel_offset", "0", "--ramdisk_offset", hex(RAMDISK_ADDRESS - BASE),
                     "--tags_offset", hex(TAGS_ADDRESS - BASE), "--board", "wayne-mainline",
-                    "--cmdline", CMDLINE, "-o", str(compact)], check=True)
+                    "--cmdline", cmdline, "-o", str(compact)], check=True)
     compact_data = compact.read_bytes()
-    check_boot(compact_data, kernel, ramdisk)
+    check_boot(compact_data, kernel, ramdisk, cmdline)
     boot.write_bytes(compact_data + bytes(PARTITION_SIZE - len(compact_data)))
     data = boot.read_bytes()
-    header = check_boot(data, kernel, ramdisk)
+    header = check_boot(data, kernel, ramdisk, cmdline)
     report = {"purpose": "standalone mainline bring-up; not Android userspace",
+              "profile": profile,
               "upstream_commit": metadata["upstream_commit"],
               "upstream_tree": metadata["upstream_tree"],
               "baseline_commit": metadata["baseline_commit"],
@@ -189,6 +229,13 @@ def build(source, out, output, mkbootimg):
               "device_boot_tested": False, "android14_vendor_compatible": False,
               "signed": False, "qemu_smoke_tested": False,
               "address_note": "ARM64-aligned RAM placement; Wayne bootloader handling remains untested"}
+    if profile == "ram-probe":
+        report.update({
+            "embedded_initramfs_source": RAM_PROBE_CPIO.as_posix(),
+            "embedded_initramfs_bytes": len(cpio),
+            "embedded_initramfs_sha256": digest(cpio),
+            "embedded_initramfs_verified": True,
+        })
     (output / "boot-validation.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
 
@@ -199,5 +246,7 @@ if __name__ == "__main__":
     parser.add_argument("--build-out", required=True, type=pathlib.Path)
     parser.add_argument("--output", required=True, type=pathlib.Path)
     parser.add_argument("--mkbootimg", default="mkbootimg")
+    parser.add_argument("--profile", choices=("standard", "ram-probe"), default="standard")
     args = parser.parse_args()
-    build(args.source.resolve(), args.build_out.resolve(), args.output.resolve(), args.mkbootimg)
+    build(args.source.resolve(), args.build_out.resolve(), args.output.resolve(), args.mkbootimg,
+          profile=args.profile)

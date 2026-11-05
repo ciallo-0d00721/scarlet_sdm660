@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Build the RAM-only Wayne diagnostic profile in this native Linux 6.12 checkout.
+set -euo pipefail
+root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
+out=${WAYNE_RAM_PROBE_OUT:-${WAYNE_OUT:-"$root/../out-6.12-ram-probe"}}
+boot_out=${WAYNE_RAM_PROBE_BOOT_OUT:-${WAYNE_BOOT_OUT:-"$root/../boot-wayne-6.12-ram-probe"}}
+mode=${1:-image}
+jobs=${JOBS:-24}
+export PATH="/usr/lib/llvm-18/bin:$PATH"
+[[ $(uname -s) == Linux ]] || { echo 'Use Linux or VS Code Remote SSH.' >&2; exit 1; }
+[[ $jobs =~ ^[1-9][0-9]*$ ]] || { echo 'JOBS must be positive.' >&2; exit 1; }
+case "$mode" in config|dtbs|image|boot) ;; *) echo "Unknown task: $mode" >&2; exit 1 ;; esac
+mkdir -p "$out"
+out=$(realpath "$out")
+boot_out=$(realpath -m "$boot_out")
+[[ $out != "$boot_out" ]] || { echo 'The RAM probe build and boot outputs must be distinct.' >&2; exit 1; }
+args=(-C "$root" O="$out" ARCH=arm64 LLVM=1 LLVM_IAS=1 CROSS_COMPILE=aarch64-linux-gnu-)
+if [[ $mode == config || ! -f $out/.config ]]; then
+    make "${args[@]}" wayne_ram_probe_defconfig
+fi
+make "${args[@]}" olddefconfig
+python3 "$root/tools/wayne/check-config.py" "$out/.config" \
+    "$root/arch/arm64/configs/wayne-ram-probe.fragment"
+[[ $mode != config ]] || exit 0
+make "${args[@]}" -j"$jobs" qcom/sdm660-xiaomi-wayne.dtb
+python3 "$root/tools/wayne/inspect-dtb.py" \
+    "$out/arch/arm64/boot/dts/qcom/sdm660-xiaomi-wayne.dtb" \
+    --output "$out/wayne-dtb-validation.json"
+[[ $mode != dtbs ]] || exit 0
+# A .cpio CONFIG_INITRAMFS_SOURCE bypasses Kbuild's host tool rule, so build
+# gen_init_cpio ourselves before generating the archive the Image will embed.
+mkdir -p "$out/usr" "$out/ram-probe"
+cc -O2 -o "$out/usr/gen_init_cpio" "$root/usr/gen_init_cpio.c"
+python3 - "$root" "$out" <<'PY'
+import importlib.util
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1])
+out = pathlib.Path(sys.argv[2])
+spec = importlib.util.spec_from_file_location("wayne_make_boot", root / "tools/wayne/make-boot.py")
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+_, _, cpio = module.build_ramdisk(out, out / "ram-probe")
+(out / "ram-probe/initramfs.cpio").write_bytes(cpio)
+PY
+make "${args[@]}" -j"$jobs" Image.gz
+sha256sum "$out/arch/arm64/boot/Image.gz"
+[[ $mode == boot ]] || exit 0
+packer=${WAYNE_MKBOOTIMG:-"$root/../mkbootimg-aosp-android11.py"}
+[[ -f $packer ]] || { echo 'Prepare AOSP mkbootimg; see Documentation/wayne/boot.md.' >&2; exit 1; }
+python3 "$root/tools/wayne/make-boot.py" --source "$root" --build-out "$out" \
+    --output "$boot_out" --mkbootimg "$packer" --profile ram-probe
