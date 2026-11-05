@@ -42,10 +42,17 @@ charger record; an older archive contained a previous mainline trial.
 
 At 21:57:19 a further comparison added only
 `initcall_blacklist=qcom_watchdog_driver_init` to the regulator-hold command
-line. Its screen/recovery interpretation is pending confirmation. The actual
+line. The user confirmed an automatic return to the original Android desktop.
+No PID 1 marker or planned init-timer execution was verified. The actual
 initcall name was checked against the compiled kernel symbol table. No
 watchdog-related root cause is claimed.
 
 Original boot/recovery hashes continued matching their read-only backups
 during each preflight. Raw phone logs and the photo are retained locally;
 they are not included in this source tree.
+
+The later QCOM platform-only configuration at
+`daf35132c88bffb249fafead36bc61f3675688dc` was also tested with a
+temporary boot at 22:23:21. The user reported a return to the charger screen;
+no mainline PID 1 or USB console was verified. Its QEMU pass is separate
+from this physical-device result.
