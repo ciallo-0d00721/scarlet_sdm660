@@ -80,4 +80,14 @@ The keepalive-disabled control with build `81502d08bf71` also stayed
 up past the 30-second watchdog timeout. The board now describes the
 vendor bark interrupt. The opt-in watchdog uses separate bark/bite
 thresholds, unmasks bark, and resets the counter after enabling it.
-Physical verification of this sequence is pending.
+Build `a7015e023685` read back enable 0x3 and both programmed thresholds,
+with no kernel keepalive, but did not reset at the 30-second hardware
+deadline. Fastboot returned after approximately 85 seconds, consistent
+with the 75-second userspace timer. Do not rely on a hardware watchdog
+reset during a complete CPU lockup on the basis of these tests.
+
+The same build's kernel-deadline control returned to Fastboot after
+approximately 52 seconds. Its userspace timer was set to 180 seconds;
+pstore retained the 45-second kernel-deadline message with some damaged
+characters. This validates recovery independently of the userspace timer
+while kernel work can still run.
