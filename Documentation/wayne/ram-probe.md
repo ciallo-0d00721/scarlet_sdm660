@@ -358,3 +358,12 @@ MMCC configuration in a 183-value checked fragment. The wayne DTS already
 limits usb3_dwc3 to qusb2phy0 and peripheral/high-speed mode. The profile
 keeps tty0 as console and enables the CDC-ACM gadget for host-side
 enumeration. Physical validation is pending.
+
+## USB2 no-driver bisection
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=usb2nodrv tools/wayne/build-ram-probe.sh boot
+
+This uses the USB2 kernel with usb_init, usb_gadget_init, usb_udc_init, the
+DWC3 core/QCOM drivers, QUSB2 PHY and g_serial initcalls blacklisted. It
+determines whether the USB image fails in the USB stack or earlier. Physical
+validation is pending.

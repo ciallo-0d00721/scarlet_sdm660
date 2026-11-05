@@ -88,7 +88,8 @@
         "fsprobe",
         "sysmount",
         "mmcc",
-        "usb2"
+        "usb2",
+        "usb2nodrv"
       ],
       "default": "core"
     }
