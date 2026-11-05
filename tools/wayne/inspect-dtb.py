@@ -182,12 +182,17 @@ def inspect(path):
             raise ValueError("Unexpected Wayne IMEM resource")
         if len(reboot_reference) != 4 or reboot_reference != reboot.get("phandle"):
             raise ValueError("Bootguard chosen phandle must identify the validated reboot-mode node")
+        pon = nodes.get("/soc@0/spmi@800f000/pmic@0/pon@800", {})
+        if (pon.get("compatible") != b"qcom,pm8998-pon\0" or
+                pon.get("reg") != struct.pack(">I", 0x800) or
+                pon.get("mode-bootloader") != struct.pack(">I", 2)):
+            raise ValueError("Invalid Wayne PM660 bootloader reason")
     return {"sha256": hashlib.sha256(data).hexdigest(), "bytes": total,
             "nodes": len(nodes), "board_checks_passed": len(expected),
             "static_reserved_ranges_checked": len(ranges),
             "watchdog_clock_reference_checked": True,
             "bootguard_reboot_reason_checked": bootguard_checked,
-            "bootguard_checks_passed": 7 if bootguard_checked else 0,
+            "bootguard_checks_passed": 10 if bootguard_checked else 0,
             "usb_phy_and_supply_references_checked": True,
             "validation_scope": "dtb structure, board properties and static reservations",
             "boot_tested": False, "schema_validated": False}

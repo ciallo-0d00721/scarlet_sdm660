@@ -8,10 +8,17 @@
 #include <linux/of_address.h>
 #include <linux/panic_notifier.h>
 #include <linux/reboot.h>
+#include <soc/qcom/wayne-bootguard.h>
 
 static bool bootguard_enabled;
 static void __iomem *bootguard_reason;
 static u32 bootguard_magic;
+static bool bootguard_armed;
+
+bool wayne_bootguard_is_armed(void)
+{
+	return bootguard_armed;
+}
 
 static int __init wayne_bootguard_setup(char *value)
 {
@@ -103,6 +110,7 @@ static int __init wayne_bootguard_init(void)
 		ret = -EIO;
 		goto unregister_panic;
 	}
+	bootguard_armed = true;
 	pr_info("WAYNE_BOOTGUARD_ARMED bootloader=%#x offset=%#x\n",
 		bootguard_magic, offset);
 	of_node_put(mode);

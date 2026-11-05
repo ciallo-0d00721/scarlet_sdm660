@@ -299,6 +299,7 @@ config QCOM_WAYNE_BOOTGUARD
 	bool "Xiaomi Wayne temporary-kernel Fastboot recovery"
 	depends on ARCH_QCOM && ARM64 && OF && DEBUG_KERNEL
 	depends on QCOM_WDT=y && MFD_SYSCON
+	depends on SPMI_MSM_PMIC_ARB=y && POWER_RESET_QCOM_PON=y
 	select SYSCON_REBOOT_MODE
 	help
 	  Adds an opt-in, early IMEM bootloader-reason guard for temporary Wayne

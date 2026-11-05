@@ -17,7 +17,12 @@ watchdog registers at subsystem level 4, ahead of USB device initcalls at
 level 6. Its boot_timeout parameter starts the hardware watchdog even when
 firmware did not leave it running. The normal watchdog driver/module path is
 unchanged when QCOM_WAYNE_BOOTGUARD is disabled; both branches were compiled.
-Actual probe/arming still needs to be confirmed on the phone.
+On the first phone trial, both IMEM and the watchdog armed and the timer
+rebooted to the original OS. The vendor restart path also records the
+bootloader reason in PM660 PON. Use the native SPMI and PMIC drivers and
+pre-arm the existing PM660 PON reboot mode after its device probes. The
+guard does not change PMIC power-off settings. The host can fall back to
+ADB reboot bootloader when the original OS reappears.
 
 The diagnostic init supports the exact token wayne.reboot_mode=bootloader.
 Its timer uses Linux RESTART2 with the bootloader argument. The default
@@ -31,7 +36,7 @@ kernel panic recovery path. It is absent from normal guarded tests.
     JOBS=24 WAYNE_RAM_PROBE_STAGE=bootguardwdt tools/wayne/build-ram-probe.sh boot
     JOBS=24 WAYNE_RAM_PROBE_STAGE=bootguardpanic tools/wayne/build-ram-probe.sh boot
 
-All three use the same 181-value kernel configuration. Their packed images
+All three use the same kernel configuration. Their packed images
 have separate default directories and differ in the diagnostic command line.
 An unchanged embedded cpio no longer forces an Image relink between profiles.
 
