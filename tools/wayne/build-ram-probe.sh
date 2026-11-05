@@ -25,6 +25,10 @@ case "$stage" in
     usb2nodwc3) name=ram-usb2; defconfig=wayne_ram_usb2_defconfig; boot_profile=ram-usb2-nodwc3 ;;
     usb2guardnodwc3) name=ram-usb2-guard; defconfig=wayne_ram_usb2_guard_defconfig
         boot_profile=ram-usb2-guard-nodwc3 ;;
+    usb2guardcore) name=ram-usb2-guard; defconfig=wayne_ram_usb2_guard_defconfig
+        boot_profile=ram-usb2-guard-core ;;
+    usb2guardfull) name=ram-usb2-guard; defconfig=wayne_ram_usb2_guard_defconfig
+        boot_profile=ram-usb2-guard-full ;;
     usb2guardwrapper) name=ram-usb2-guard; defconfig=wayne_ram_usb2_guard_defconfig
         boot_profile=ram-usb2-guard-wrapper ;;
     bootguard) name=ram-bootguard; defconfig=wayne_ram_bootguard_defconfig; boot_profile=ram-bootguard ;;

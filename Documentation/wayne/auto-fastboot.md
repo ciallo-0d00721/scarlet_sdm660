@@ -110,3 +110,12 @@ controller. Check pstore for the PID 1 marker and the probe outcome,
 and use the Fastboot protocol to verify recovery. The packed images
 must have the same payload hash and the QEMU harness must confirm the
 exact blacklist for each variant.
+
+On Mi 6X, build `541e7c689580` reached the diagnostic init with both
+variants and returned to Fastboot after about 71 seconds in each case.
+The wrapper-only pstore includes the controller probe and QSCRATCH
+resource; the controller was not the early blocker in this comparison.
+The follow-up `usb2guardcore` stage binds both DWC3 drivers but blacklists
+`gserial_init`; `usb2guardfull` restores the serial gadget. These two
+profiles use the same payload and USB console command line and differ
+only in that blacklist. A QEMU pass does not establish USB enumeration.

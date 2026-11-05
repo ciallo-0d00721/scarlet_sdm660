@@ -65,7 +65,11 @@ BOOTGUARD_CMDLINE = (RAM_PROBE_CMDLINE.replace("panic=0", "panic=5")
                     "qcom_wdt.boot_timeout=30 watchdog.open_timeout=120 wayne.bootguard_deadline=150")
 BOOTGUARD_PROFILES = ("ram-bootguard", "ram-bootguard-wdt", "ram-bootguard-panic",
                       "ram-bootguard-deadline")
+USB_GUARD_CMDLINE = BOOTGUARD_CMDLINE.replace(
+    "console=tty0", "console=tty0 console=ttyGS0,115200n8") +     " g_serial.use_acm=1 g_serial.n_ports=1"
 USB_GUARD_PROFILES = {
+    "ram-usb2-guard-core": USB_GUARD_CMDLINE + " initcall_blacklist=gserial_init",
+    "ram-usb2-guard-full": USB_GUARD_CMDLINE,
     "ram-usb2-guard-nodwc3": BOOTGUARD_CMDLINE +
         " initcall_blacklist=dwc3_driver_init,dwc3_qcom_driver_init",
     "ram-usb2-guard-wrapper": BOOTGUARD_CMDLINE +

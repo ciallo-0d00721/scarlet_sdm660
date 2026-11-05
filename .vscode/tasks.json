@@ -94,6 +94,8 @@
         "usb2nophy",
         "usb2guardnodwc3",
         "usb2guardwrapper",
+        "usb2guardcore",
+        "usb2guardfull",
         "bootguard",
         "bootguardwdt",
         "bootguardpanic",
