@@ -6,6 +6,7 @@ stage=${WAYNE_RAM_PROBE_STAGE:-core}
 case "$stage" in
     core) name=ram-probe; defconfig=wayne_ram_probe_defconfig ;;
     scm) name=ram-scm; defconfig=wayne_ram_scm_defconfig ;;
+    tlmm) name=ram-tlmm; defconfig=wayne_ram_tlmm_defconfig ;;
     *) echo "Unknown RAM probe stage: $stage" >&2; exit 1 ;;
 esac
 out=${WAYNE_RAM_PROBE_OUT:-${WAYNE_OUT:-"$root/../out-6.12-$name"}}

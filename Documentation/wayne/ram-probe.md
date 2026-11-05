@@ -41,5 +41,21 @@ All other RAM-profile requirements remain checked. The initial SCM-stage
 configuration contains 140 requested requirements. It keeps the identical board
 DTB and diagnostic initramfs and the same one-CPU, framebuffer-only command line.
 
-SCM-stage physical validation is pending; the RAM-core result above must not
-be read as proof that SCM or any additional peripheral works.
+The SCM-stage image at e278e209737a3f94a4b29e129a82bee6d1f8c9f2
+(SHA-256 b1f9d20b99afc2db52a642500949a4937a78fea42010f13825f08167f346033e)
+also reached PID 1 and a 30-second heartbeat on the physical phone. Its pstore
+reported qcom_scm convention smc arm 64, the PID 1 start, the planned reboot
+at about 92 seconds and the SCM device shutdown callback. Android was then
+reachable again. This demonstrates the SCM probe in this isolated profile,
+not every secure call or the later peripheral drivers.
+
+## TLMM isolation stage
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=tlmm tools/wayne/build-ram-probe.sh boot
+
+This stage uses separate out-6.12-ram-tlmm outputs and the matching 140-value
+fragment. Relative to the SCM-stage .config, only PINCTRL_SDM660 changes from
+n to y, besides the descriptive LOCALVERSION suffix. The board DTB retains
+the GPIO 8-11 firmware ownership reservation already checked by inspect-dtb.
+The kernel and diagnostic userspace use the same unchanged RAM-only boot
+parameters. TLMM-stage physical validation is pending.
