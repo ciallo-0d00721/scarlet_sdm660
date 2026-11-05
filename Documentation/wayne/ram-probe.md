@@ -325,3 +325,12 @@ controller printed Reset 0x1 once during probe. The phone returned to
 the original Android system; boot and recovery hashes still matched
 their read-only backups. Some pstore bytes were corrupted. The system
 build.prop reports Android 12 / SDK 32, not Android 14.
+
+## Multimedia clock controller stage
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=mmcc tools/wayne/build-ram-probe.sh boot
+
+This stage adds SDM_MMCC_660 to the system-mount configuration in a 173-value
+checked fragment. MMCC supplies the AHB clock consumed by mnoc; it is expected
+to let the deferred mnoc interconnect probe complete. The profile does not
+mount any filesystem. Physical validation is pending.

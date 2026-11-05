@@ -18,6 +18,7 @@ case "$stage" in
     block) name=ram-block; defconfig=wayne_ram_block_defconfig; boot_profile=ram-block ;;
     fsprobe) name=ram-block; defconfig=wayne_ram_block_defconfig; boot_profile=ram-fsprobe ;;
     sysmount) name=ram-sysmount; defconfig=wayne_ram_sysmount_defconfig; boot_profile=ram-sysmount ;;
+    mmcc) name=ram-mmcc; defconfig=wayne_ram_mmcc_defconfig; boot_profile=ram-mmcc ;;
     *) echo "Unknown RAM probe stage: $stage" >&2; exit 1 ;;
 esac
 out=${WAYNE_RAM_PROBE_OUT:-${WAYNE_OUT:-"$root/../out-6.12-$name"}}

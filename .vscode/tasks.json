@@ -86,7 +86,8 @@
         "emmc",
         "block",
         "fsprobe",
-        "sysmount"
+        "sysmount",
+        "mmcc"
       ],
       "default": "core"
     }
