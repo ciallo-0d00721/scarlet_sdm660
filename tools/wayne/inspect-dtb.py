@@ -164,10 +164,30 @@ def inspect(path):
         if props.get("regulator-min-microvolt") != struct.pack(">I", low) or \
                 props.get("regulator-max-microvolt") != struct.pack(">I", high):
             raise ValueError(f"Unexpected USB regulator voltage: {provider}/{rail}")
+    reboot_reference = nodes.get("/chosen", {}).get("xiaomi,bootguard-reboot-mode")
+    bootguard_checked = reboot_reference is not None
+    if bootguard_checked:
+        reboot_path = "/soc@0/sram@146bf000/reboot-mode"
+        reboot = nodes.get(reboot_path, {})
+        expected_reboot = {
+            "compatible": b"syscon-reboot-mode\0",
+            "offset": struct.pack(">I", 0x65c),
+            "mode-normal": struct.pack(">I", 0x77665501),
+            "mode-bootloader": struct.pack(">I", 0x77665500),
+            "mode-recovery": struct.pack(">I", 0x77665502),
+        }
+        if any(reboot.get(key) != value for key, value in expected_reboot.items()):
+            raise ValueError("Invalid Wayne IMEM reboot protocol")
+        if nodes.get("/soc@0/sram@146bf000", {}).get("reg") != struct.pack(">II", 0x146bf000, 0x1000):
+            raise ValueError("Unexpected Wayne IMEM resource")
+        if len(reboot_reference) != 4 or reboot_reference != reboot.get("phandle"):
+            raise ValueError("Bootguard chosen phandle must identify the validated reboot-mode node")
     return {"sha256": hashlib.sha256(data).hexdigest(), "bytes": total,
             "nodes": len(nodes), "board_checks_passed": len(expected),
             "static_reserved_ranges_checked": len(ranges),
             "watchdog_clock_reference_checked": True,
+            "bootguard_reboot_reason_checked": bootguard_checked,
+            "bootguard_checks_passed": 7 if bootguard_checked else 0,
             "usb_phy_and_supply_references_checked": True,
             "validation_scope": "dtb structure, board properties and static reservations",
             "boot_tested": False, "schema_validated": False}

@@ -33,6 +33,7 @@
 		#size-cells = <2>;
 		ranges;
 		stdout-path = "serial0:115200n8";
+		xiaomi,bootguard-reboot-mode = <&wayne_reboot_mode>;
 
 		/*
 		 * Provisional bootloader surface from the related Mi A2 port.
@@ -216,4 +217,15 @@
 
 	phys = <&qusb2phy0>;
 	phy-names = "usb2-phy";
+};
+
+/* Restart reason layout and values match the Wayne vendor boot protocol. */
+&{/soc@0/sram@146bf000} {
+	wayne_reboot_mode: reboot-mode {
+		compatible = "syscon-reboot-mode";
+		offset = <0x65c>;
+		mode-normal = <0x77665501>;
+		mode-bootloader = <0x77665500>;
+		mode-recovery = <0x77665502>;
+	};
 };

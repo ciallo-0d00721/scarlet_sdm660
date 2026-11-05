@@ -22,6 +22,13 @@ enum wdt_reg {
 
 #define QCOM_WDT_ENABLE		BIT(0)
 
+#if IS_ENABLED(CONFIG_QCOM_WAYNE_BOOTGUARD)
+static unsigned int boot_timeout;
+module_param(boot_timeout, uint, 0);
+MODULE_PARM_DESC(boot_timeout,
+		 "Wayne bring-up hardware watchdog timeout; zero leaves startup unchanged");
+#endif
+
 static const u32 reg_offset_data_apcs_tmr[] = {
 	[WDT_RST] = 0x38,
 	[WDT_EN] = 0x40,
@@ -197,6 +204,7 @@ static int qcom_wdt_probe(struct platform_device *pdev)
 	u32 percpu_offset;
 	int irq, ret;
 	struct clk *clk;
+	bool boot_start = false;
 
 	data = of_device_get_match_data(dev);
 	if (!data) {
@@ -278,22 +286,40 @@ static int qcom_wdt_probe(struct platform_device *pdev)
 	wdt->wdd.timeout = min(wdt->wdd.max_timeout, 30U);
 	watchdog_init_timeout(&wdt->wdd, 0, dev);
 
+#if IS_ENABLED(CONFIG_QCOM_WAYNE_BOOTGUARD)
+	if (boot_timeout) {
+		if (!of_machine_is_compatible("xiaomi,wayne"))
+			return -ENODEV;
+		if (boot_timeout < wdt->wdd.min_timeout ||
+		    boot_timeout > wdt->wdd.max_timeout)
+			return dev_err_probe(dev, -EINVAL, "invalid boot watchdog timeout\n");
+		wdt->wdd.timeout = boot_timeout;
+		boot_start = true;
+	}
+#endif
+
 	/*
 	 * If WDT is already running, call WDT start which
 	 * will stop the WDT, set timeouts as bootloader
 	 * might use different ones and set running bit
 	 * to inform the WDT subsystem to ping the WDT
 	 */
-	if (qcom_wdt_is_running(&wdt->wdd)) {
+	if (qcom_wdt_is_running(&wdt->wdd) || boot_start) {
 		qcom_wdt_start(&wdt->wdd);
 		set_bit(WDOG_HW_RUNNING, &wdt->wdd.status);
 	}
+
+	if (boot_start && !qcom_wdt_is_running(&wdt->wdd))
+		return dev_err_probe(dev, -EIO, "boot watchdog did not enable\n");
 
 	ret = devm_watchdog_register_device(dev, &wdt->wdd);
 	if (ret)
 		return ret;
 
 	platform_set_drvdata(pdev, wdt);
+	if (boot_start)
+		dev_notice(dev, "WAYNE_BOOT_WATCHDOG_ACTIVE timeout=%u rate=%lu\n",
+			   wdt->wdd.timeout, wdt->rate);
 	return 0;
 }
 
@@ -337,7 +363,16 @@ static struct platform_driver qcom_watchdog_driver = {
 		.pm		= &qcom_wdt_pm_ops,
 	},
 };
+#if IS_ENABLED(CONFIG_QCOM_WAYNE_BOOTGUARD)
+/* The recovery watchdog must be available before USB device initcalls. */
+static int __init qcom_watchdog_driver_init(void)
+{
+	return platform_driver_register(&qcom_watchdog_driver);
+}
+subsys_initcall(qcom_watchdog_driver_init);
+#else
 module_platform_driver(qcom_watchdog_driver);
+#endif
 
 MODULE_DESCRIPTION("QCOM KPSS Watchdog Driver");
 MODULE_LICENSE("GPL v2");

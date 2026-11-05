@@ -295,4 +295,15 @@ config QCOM_PBS
 	  This module provides the APIs to the client drivers that wants to send the
 	  PBS trigger event to the PBS RAM.
 
+config QCOM_WAYNE_BOOTGUARD
+	bool "Xiaomi Wayne temporary-kernel Fastboot recovery"
+	depends on ARCH_QCOM && ARM64 && OF && DEBUG_KERNEL
+	depends on QCOM_WDT=y && MFD_SYSCON
+	select SYSCON_REBOOT_MODE
+	help
+	  Adds an opt-in, early IMEM bootloader-reason guard for temporary Wayne
+	  bring-up images. Enable it with wayne.bootguard=1. The Qualcomm watchdog
+	  registers before USB and may be started with qcom_wdt.boot_timeout.
+	  Both the kernel option and the command-line opt-in are diagnostic-only.
+
 endmenu

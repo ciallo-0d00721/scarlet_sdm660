@@ -23,10 +23,15 @@ case "$stage" in
     usb2nodrv) name=ram-usb2; defconfig=wayne_ram_usb2_defconfig; boot_profile=ram-usb2-nodrv ;;
     usb2nophy) name=ram-usb2; defconfig=wayne_ram_usb2_defconfig; boot_profile=ram-usb2-nophy ;;
     usb2nodwc3) name=ram-usb2; defconfig=wayne_ram_usb2_defconfig; boot_profile=ram-usb2-nodwc3 ;;
+    bootguard) name=ram-bootguard; defconfig=wayne_ram_bootguard_defconfig; boot_profile=ram-bootguard ;;
+    bootguardwdt) name=ram-bootguard; defconfig=wayne_ram_bootguard_defconfig; boot_profile=ram-bootguard-wdt ;;
+    bootguardpanic) name=ram-bootguard; defconfig=wayne_ram_bootguard_defconfig; boot_profile=ram-bootguard-panic ;;
     *) echo "Unknown RAM probe stage: $stage" >&2; exit 1 ;;
 esac
 out=${WAYNE_RAM_PROBE_OUT:-${WAYNE_OUT:-"$root/../out-6.12-$name"}}
-boot_out=${WAYNE_RAM_PROBE_BOOT_OUT:-${WAYNE_BOOT_OUT:-"$root/../boot-wayne-6.12-$name"}}
+boot_name="ram-$stage"
+[[ $stage != core ]] || boot_name=ram-probe
+boot_out=${WAYNE_RAM_PROBE_BOOT_OUT:-${WAYNE_BOOT_OUT:-"$root/../boot-wayne-6.12-$boot_name"}}
 mode=${1:-image}
 jobs=${JOBS:-24}
 export PATH="/usr/lib/llvm-18/bin:$PATH"
@@ -65,7 +70,9 @@ spec = importlib.util.spec_from_file_location("wayne_make_boot", root / "tools/w
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 _, _, cpio = module.build_ramdisk(out, out / "ram-probe")
-(out / "ram-probe/initramfs.cpio").write_bytes(cpio)
+archive = out / "ram-probe/initramfs.cpio"
+if not archive.exists() or archive.read_bytes() != cpio:
+    archive.write_bytes(cpio)
 PY
 make "${args[@]}" -j"$jobs" Image.gz
 sha256sum "$out/arch/arm64/boot/Image.gz"

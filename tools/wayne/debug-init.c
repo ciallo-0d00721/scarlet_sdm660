@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <linux/reboot.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,6 +13,7 @@
 #include <sys/reboot.h>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
+#include <sys/syscall.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
 #include <time.h>
@@ -120,14 +122,27 @@ static unsigned int read_reboot_timer(void)
 static int command_has(const char *needle)
 {
     FILE *file = fopen("/proc/cmdline", "r");
-    char command[4096];
+    char command[4096], *token, *save;
     int found = 0;
     if (!file)
         return 0;
-    if (fgets(command, sizeof(command), file))
-        found = strstr(command, needle) != NULL;
+    if (fgets(command, sizeof(command), file)) {
+        for (token = strtok_r(command, " \t\n", &save); token;
+             token = strtok_r(NULL, " \t\n", &save)) {
+            if (!strcmp(token, needle)) {
+                found = 1;
+                break;
+            }
+        }
+    }
     fclose(file);
     return found;
+}
+
+static int reboot_to_bootloader(void)
+{
+    return (int)syscall(SYS_reboot, LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2,
+                       LINUX_REBOOT_CMD_RESTART2, "bootloader");
 }
 
 static unsigned int read_le32(const unsigned char *p)
@@ -238,6 +253,8 @@ int main(int argc, char **argv)
     unsigned long heartbeat = 0;
     unsigned long elapsed = 0;
     unsigned int reboot_after;
+    int bootloader_target;
+    int test_pid1_exit;
     int console;
     if (argc == 2 && !strcmp(argv[1], "--self-test")) {
         if (parse_reboot_argument("wayne.reboot_after=30") != 30 ||
@@ -275,6 +292,8 @@ int main(int argc, char **argv)
         log_message("kernel=%s machine=%s", name.release, name.machine);
     mount_ram_filesystem("proc", "/proc");
     reboot_after = read_reboot_timer();
+    bootloader_target = command_has("wayne.reboot_mode=bootloader");
+    test_pid1_exit = command_has("wayne.test_pid1_exit=1");
     mount_ram_filesystem("sysfs", "/sys");
     directory("/sys/fs/pstore");
     mount_ram_filesystem("pstore", "/sys/fs/pstore");
@@ -302,10 +321,23 @@ int main(int argc, char **argv)
         if (!(elapsed % 30))
             log_message("heartbeat=%lu pid=%ld kernel=%s", ++heartbeat,
                         (long)getpid(), name.release);
+        if (test_pid1_exit && elapsed >= 5) {
+            log_message("WAYNE_TEST_PID1_EXIT");
+            _exit(1);
+        }
         if (reboot_after && elapsed >= reboot_after) {
             log_message("REBOOTING_AFTER_TEST");
-            if (reboot(RB_AUTOBOOT))
+            if (bootloader_target) {
+                log_message("REBOOT_TARGET=bootloader");
+                if (reboot_to_bootloader()) {
+                    int saved_errno = errno;
+
+                    log_message("reboot bootloader failed: %s (errno=%d)",
+                                strerror(saved_errno), saved_errno);
+                }
+            } else if (reboot(RB_AUTOBOOT)) {
                 log_message("reboot failed: %s", strerror(errno));
+            }
             reboot_after = 0;
         }
     }

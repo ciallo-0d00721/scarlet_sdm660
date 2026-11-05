@@ -47,9 +47,9 @@ PROFILES = {"standard": CMDLINE, "ram-probe": RAM_PROBE_CMDLINE,
             "ram-usb2-nodrv": RAM_PROBE_CMDLINE +
                               " clk_ignore_unused pd_ignore_unused regulator_ignore_unused "
                               "wayne.reboot_after=120 "
-                              "initcall_blacklist=usb_init,usb_gadget_init,usb_udc_init,"
+                              "initcall_blacklist=usb_init,usb_udc_init,"
                               "dwc3_driver_init,dwc3_qcom_driver_init,"
-                              "qusb2_phy_driver_init,g_serial_init",
+                              "qusb2_phy_driver_init,gserial_init",
             "ram-usb2-nophy": RAM_PROBE_CMDLINE +
                               " clk_ignore_unused pd_ignore_unused regulator_ignore_unused "
                               "wayne.reboot_after=120 "
@@ -58,6 +58,18 @@ PROFILES = {"standard": CMDLINE, "ram-probe": RAM_PROBE_CMDLINE,
                                " clk_ignore_unused pd_ignore_unused regulator_ignore_unused "
                                "wayne.reboot_after=120 "
                                "initcall_blacklist=dwc3_driver_init,dwc3_qcom_driver_init"}
+BOOTGUARD_CMDLINE = (RAM_PROBE_CMDLINE.replace("panic=0", "panic=5")
+                    .replace("wayne.reboot_after=90", "wayne.reboot_after=60") +
+                    " clk_ignore_unused pd_ignore_unused regulator_ignore_unused "
+                    "wayne.bootguard=1 wayne.reboot_mode=bootloader "
+                    "qcom_wdt.boot_timeout=30 watchdog.open_timeout=120")
+BOOTGUARD_PROFILES = ("ram-bootguard", "ram-bootguard-wdt", "ram-bootguard-panic")
+PROFILES.update({
+    "ram-bootguard": BOOTGUARD_CMDLINE,
+    "ram-bootguard-wdt": BOOTGUARD_CMDLINE.replace("wayne.reboot_after=60", "wayne.reboot_after=180")
+                                        .replace("watchdog.open_timeout=120", "watchdog.open_timeout=30"),
+    "ram-bootguard-panic": BOOTGUARD_CMDLINE + " wayne.test_pid1_exit=1",
+})
 COMMON_REQUIRED = ("BLK_DEV_INITRD", "RD_GZIP", "BINFMT_ELF", "DEVTMPFS", "PROC_FS", "SYSFS",
                    "TMPFS", "PSTORE_RAM")
 PROFILE_REQUIRED = {
@@ -206,6 +218,12 @@ PROFILE_REQUIRED = {
                          "NVMEM", "NVMEM_QCOM_QFPROM", "USB_G_SERIAL",
                          "U_SERIAL_CONSOLE"),
 }
+PROFILE_REQUIRED.update({
+    name: PROFILE_REQUIRED["ram-mmcc"] + (
+        "WATCHDOG", "WATCHDOG_CORE", "WATCHDOG_NOWAYOUT", "WATCHDOG_HANDLE_BOOT_ENABLED",
+        "QCOM_WDT", "MFD_SYSCON", "SYSCON_REBOOT_MODE", "REBOOT_MODE", "QCOM_WAYNE_BOOTGUARD")
+    for name in BOOTGUARD_PROFILES
+})
 RAM_PROBE_CPIO = pathlib.Path("ram-probe") / "initramfs.cpio"
 BASE = 0x80000000
 RAMDISK_ADDRESS = 0x84000000
@@ -293,6 +311,8 @@ def check_config(config, profile):
     for symbol in COMMON_REQUIRED + PROFILE_REQUIRED[profile]:
         if f"CONFIG_{symbol}=y" not in lines:
             raise ValueError(f"Missing built-in requirement: {symbol}")
+    if profile in BOOTGUARD_PROFILES and "CONFIG_WATCHDOG_OPEN_TIMEOUT=120" not in lines:
+        raise ValueError("Bootguard requires the checked watchdog open-timeout default")
     if profile != "standard":
         if 'CONFIG_INITRAMFS_SOURCE="ram-probe/initramfs.cpio"' not in lines:
             raise ValueError('RAM probe requires CONFIG_INITRAMFS_SOURCE="ram-probe/initramfs.cpio"')
@@ -361,6 +381,8 @@ def build(source, out, output, mkbootimg, profile="standard"):
     validator = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(validator)
     dtb_result = validator.inspect(dtb_path)
+    if profile in BOOTGUARD_PROFILES and not dtb_result.get("bootguard_reboot_reason_checked"):
+        raise ValueError("Bootguard requires a validated IMEM bootloader reason and chosen phandle")
     dtb = dtb_path.read_bytes()
     if len(dtb) > RAMDISK_ADDRESS - TAGS_ADDRESS:
         raise ValueError("DTB overlaps ramdisk window")
