@@ -307,5 +307,21 @@ reuses the block kernel configuration, so the release string remains
 This stage adds ext4, JBD2 and CRC16 to the block configuration in a
 172-value checked fragment. The init waits for /dev/mmcblk1p61, mounts it
 read-only with the ext4 noload option, reads build.prop, then unmounts.
-It does not replay the journal or write any data. Physical validation is
-pending.
+It does not replay the journal or write any data.
+
+Physical validation passed on 2026-11-06 at commit
+2d47a2e780bb816fcbd350fc7275cf87c61ee348. The 64 MiB image (SHA-256
+f0a070fd7993038bafabd40363235039035c66cee5a7b07a2c473825364b55fe) and its
+compact form
+(4db9ee4555e8477fb0d519942d8f18e72aae7d6094c336090cfa2f7a52d6a75c)
+reached PID 1 on the physical phone. Pstore recorded EXT4-fs on
+mmcblk1p61 mounted read-only without journal, the system build.prop
+properties (ro.product.system.device=wayne,
+ro.system.build.version.release=12, ro.build.version.sdk=32,
+ro.build.id=SQ3A.220905.001, ro.build.type=userdebug), and a clean
+unmount. No write occurred. The init logged BRINGUP_READY at about
+6.5 seconds, followed by the heartbeats and the 90 second reboot. The
+controller printed Reset 0x1 once during probe. The phone returned to
+the original Android system; boot and recovery hashes still matched
+their read-only backups. Some pstore bytes were corrupted. The system
+build.prop reports Android 12 / SDK 32, not Android 14.
