@@ -45,7 +45,7 @@ PROFILE_REQUIRED = {
                   "COMMON_CLK_QCOM", "QCOM_CLK_SMD_RPM", "SDM_GCC_660",
                   "QCOM_GDSC", "PM_GENERIC_DOMAINS", "PM_GENERIC_DOMAINS_OF",
                   "REGULATOR", "REGULATOR_FIXED_VOLTAGE",
-                  "REGULATOR_QCOM_SMD_RPM", "QCOM_RPMPD"),
+                  "REGULATOR_QCOM_SMD_RPM", "QCOM_RPMPD", "PM_OPP"),
 }
 RAM_PROBE_CPIO = pathlib.Path("ram-probe") / "initramfs.cpio"
 BASE = 0x80000000
