@@ -205,4 +205,19 @@ This stage adds the Qualcomm interconnect core, the SDM660 NoC driver and the
 SMD RPM interconnect provider to the rpmpd configuration in a 159-value
 checked fragment. It registers the CNOC/SNOC/A2NOC/MNOC/GNOC/BIMC providers
 with no MMC, USB or display consumers; the sdhc_1 and USB interconnect
-references stay unbound. Physical validation is pending.
+references stay unbound.
+
+Physical validation passed with one deferred provider on 2026-11-06 at
+commit 6a393fa8d86d5cce9d3da6c231e8bcfce0ba5cad. The 64 MiB image
+(SHA-256 c71e79c197a77e7052f58075d02ae23f4fd5b7f2321d6dbfc320ba91a6acef44)
+and its compact form
+(3f57b4a5769bf97abfc3f812f2c9c7d2ed0c9f59bdab0dd6f3dac01070933c13)
+reached PID 1 on the physical phone. Pstore recorded the qnoc-sdm660
+deferred-probe retry: bimc, cnoc, snoc, a2noc and gnoc returned 0, while
+mnoc returned -EPROBE_DEFER because its mmcc AHB clock provider is not
+enabled in this profile. icc_smd_rpm probed successfully. No MMC, USB or
+display consumer was enabled, so no interconnect bandwidth vote was
+exercised. The sdhc_1 path's a2noc/gnoc/bimc/cnoc providers are bound;
+mnoc remains deferred for a later MMCC stage. Boot and recovery hashes
+still matched their read-only backups, and the phone returned to the
+original Android system. Some pstore bytes were corrupted.
