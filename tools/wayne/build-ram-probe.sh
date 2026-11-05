@@ -21,6 +21,8 @@ case "$stage" in
     mmcc) name=ram-mmcc; defconfig=wayne_ram_mmcc_defconfig; boot_profile=ram-mmcc ;;
     usb2) name=ram-usb2; defconfig=wayne_ram_usb2_defconfig; boot_profile=ram-usb2 ;;
     usb2nodrv) name=ram-usb2; defconfig=wayne_ram_usb2_defconfig; boot_profile=ram-usb2-nodrv ;;
+    usb2nophy) name=ram-usb2; defconfig=wayne_ram_usb2_defconfig; boot_profile=ram-usb2-nophy ;;
+    usb2nodwc3) name=ram-usb2; defconfig=wayne_ram_usb2_defconfig; boot_profile=ram-usb2-nodwc3 ;;
     *) echo "Unknown RAM probe stage: $stage" >&2; exit 1 ;;
 esac
 out=${WAYNE_RAM_PROBE_OUT:-${WAYNE_OUT:-"$root/../out-6.12-$name"}}

@@ -367,3 +367,12 @@ This uses the USB2 kernel with usb_init, usb_gadget_init, usb_udc_init, the
 DWC3 core/QCOM drivers, QUSB2 PHY and g_serial initcalls blacklisted. It
 determines whether the USB image fails in the USB stack or earlier. Physical
 validation is pending.
+
+## USB2 PHY/DWC3 bisection
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=usb2nophy tools/wayne/build-ram-probe.sh boot
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=usb2nodwc3 tools/wayne/build-ram-probe.sh boot
+
+The no-PHY profile blacklists only qusb2_phy_driver_init; the no-DWC3 profile
+blacklists only the DWC3 core and QCOM wrapper. They isolate which USB driver
+hangs before pstore. Physical validation is pending.

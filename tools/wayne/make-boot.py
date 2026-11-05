@@ -49,7 +49,15 @@ PROFILES = {"standard": CMDLINE, "ram-probe": RAM_PROBE_CMDLINE,
                               "wayne.reboot_after=120 "
                               "initcall_blacklist=usb_init,usb_gadget_init,usb_udc_init,"
                               "dwc3_driver_init,dwc3_qcom_driver_init,"
-                              "qusb2_phy_driver_init,g_serial_init"}
+                              "qusb2_phy_driver_init,g_serial_init",
+            "ram-usb2-nophy": RAM_PROBE_CMDLINE +
+                              " clk_ignore_unused pd_ignore_unused regulator_ignore_unused "
+                              "wayne.reboot_after=120 "
+                              "initcall_blacklist=qusb2_phy_driver_init",
+            "ram-usb2-nodwc3": RAM_PROBE_CMDLINE +
+                               " clk_ignore_unused pd_ignore_unused regulator_ignore_unused "
+                               "wayne.reboot_after=120 "
+                               "initcall_blacklist=dwc3_driver_init,dwc3_qcom_driver_init"}
 COMMON_REQUIRED = ("BLK_DEV_INITRD", "RD_GZIP", "BINFMT_ELF", "DEVTMPFS", "PROC_FS", "SYSFS",
                    "TMPFS", "PSTORE_RAM")
 PROFILE_REQUIRED = {
@@ -165,6 +173,38 @@ PROFILE_REQUIRED = {
                        "USB_DWC3_QCOM", "USB_DWC3_GADGET", "PHY_QCOM_QUSB2",
                        "NVMEM", "NVMEM_QCOM_QFPROM", "USB_G_SERIAL",
                        "U_SERIAL_CONSOLE"),
+    "ram-usb2-nophy": ("VT_CONSOLE", "FB_SIMPLE", "FRAMEBUFFER_CONSOLE",
+                        "COMMON_CLK_QCOM", "QCOM_CLK_SMD_RPM", "SDM_GCC_660",
+                        "QCOM_GDSC", "PM_GENERIC_DOMAINS", "PM_GENERIC_DOMAINS_OF",
+                        "REGULATOR", "REGULATOR_FIXED_VOLTAGE",
+                        "REGULATOR_QCOM_SMD_RPM", "QCOM_RPMPD", "PM_OPP",
+                        "INTERCONNECT", "INTERCONNECT_CLK",
+                        "INTERCONNECT_QCOM", "INTERCONNECT_QCOM_SDM660",
+                        "INTERCONNECT_QCOM_SMD_RPM",
+                        "MMC", "MMC_SDHCI", "MMC_SDHCI_PLTFM", "MMC_SDHCI_MSM",
+                        "MMC_CQHCI", "BLOCK", "MMC_BLOCK", "PARTITION_ADVANCED",
+                        "EFI_PARTITION", "MSDOS_PARTITION", "CRC32",
+                        "EXT4_FS", "JBD2", "CRC16", "SDM_MMCC_660",
+                        "USB_SUPPORT", "USB", "USB_GADGET", "USB_DWC3",
+                        "USB_DWC3_QCOM", "USB_DWC3_GADGET", "PHY_QCOM_QUSB2",
+                        "NVMEM", "NVMEM_QCOM_QFPROM", "USB_G_SERIAL",
+                        "U_SERIAL_CONSOLE"),
+    "ram-usb2-nodwc3": ("VT_CONSOLE", "FB_SIMPLE", "FRAMEBUFFER_CONSOLE",
+                         "COMMON_CLK_QCOM", "QCOM_CLK_SMD_RPM", "SDM_GCC_660",
+                         "QCOM_GDSC", "PM_GENERIC_DOMAINS", "PM_GENERIC_DOMAINS_OF",
+                         "REGULATOR", "REGULATOR_FIXED_VOLTAGE",
+                         "REGULATOR_QCOM_SMD_RPM", "QCOM_RPMPD", "PM_OPP",
+                         "INTERCONNECT", "INTERCONNECT_CLK",
+                         "INTERCONNECT_QCOM", "INTERCONNECT_QCOM_SDM660",
+                         "INTERCONNECT_QCOM_SMD_RPM",
+                         "MMC", "MMC_SDHCI", "MMC_SDHCI_PLTFM", "MMC_SDHCI_MSM",
+                         "MMC_CQHCI", "BLOCK", "MMC_BLOCK", "PARTITION_ADVANCED",
+                         "EFI_PARTITION", "MSDOS_PARTITION", "CRC32",
+                         "EXT4_FS", "JBD2", "CRC16", "SDM_MMCC_660",
+                         "USB_SUPPORT", "USB", "USB_GADGET", "USB_DWC3",
+                         "USB_DWC3_QCOM", "USB_DWC3_GADGET", "PHY_QCOM_QUSB2",
+                         "NVMEM", "NVMEM_QCOM_QFPROM", "USB_G_SERIAL",
+                         "U_SERIAL_CONSOLE"),
 }
 RAM_PROBE_CPIO = pathlib.Path("ram-probe") / "initramfs.cpio"
 BASE = 0x80000000

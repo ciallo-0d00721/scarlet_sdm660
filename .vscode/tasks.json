@@ -89,7 +89,9 @@
         "sysmount",
         "mmcc",
         "usb2",
-        "usb2nodrv"
+        "usb2nodrv",
+        "usb2nodwc3",
+        "usb2nophy"
       ],
       "default": "core"
     }
