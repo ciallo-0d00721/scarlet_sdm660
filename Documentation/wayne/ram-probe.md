@@ -196,3 +196,13 @@ recovery hashes still matched their read-only backups. This establishes
 provider registration and OPP parsing in the RAM-only profile. Because
 sync_state is a no-op in this branch, it does not establish boot-time RPM
 power-domain votes.
+
+## Interconnect provider isolation stage
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=interconnect tools/wayne/build-ram-probe.sh boot
+
+This stage adds the Qualcomm interconnect core, the SDM660 NoC driver and the
+SMD RPM interconnect provider to the rpmpd configuration in a 159-value
+checked fragment. It registers the CNOC/SNOC/A2NOC/MNOC/GNOC/BIMC providers
+with no MMC, USB or display consumers; the sdhc_1 and USB interconnect
+references stay unbound. Physical validation is pending.

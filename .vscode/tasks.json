@@ -81,7 +81,8 @@
         "rpmclk",
         "gcc",
         "rails",
-        "rpmpd"
+        "rpmpd",
+        "interconnect"
       ],
       "default": "core"
     }

@@ -26,7 +26,9 @@ PROFILES = {"standard": CMDLINE, "ram-probe": RAM_PROBE_CMDLINE,
             "ram-rails": RAM_PROBE_CMDLINE +
                          " clk_ignore_unused pd_ignore_unused regulator_ignore_unused",
             "ram-rpmpd": RAM_PROBE_CMDLINE +
-                         " clk_ignore_unused pd_ignore_unused regulator_ignore_unused"}
+                         " clk_ignore_unused pd_ignore_unused regulator_ignore_unused",
+            "ram-interconnect": RAM_PROBE_CMDLINE +
+                                " clk_ignore_unused pd_ignore_unused regulator_ignore_unused"}
 COMMON_REQUIRED = ("BLK_DEV_INITRD", "RD_GZIP", "BINFMT_ELF", "DEVTMPFS", "PROC_FS", "SYSFS",
                    "TMPFS", "PSTORE_RAM")
 PROFILE_REQUIRED = {
@@ -46,6 +48,14 @@ PROFILE_REQUIRED = {
                   "QCOM_GDSC", "PM_GENERIC_DOMAINS", "PM_GENERIC_DOMAINS_OF",
                   "REGULATOR", "REGULATOR_FIXED_VOLTAGE",
                   "REGULATOR_QCOM_SMD_RPM", "QCOM_RPMPD", "PM_OPP"),
+    "ram-interconnect": ("VT_CONSOLE", "FB_SIMPLE", "FRAMEBUFFER_CONSOLE",
+                         "COMMON_CLK_QCOM", "QCOM_CLK_SMD_RPM", "SDM_GCC_660",
+                         "QCOM_GDSC", "PM_GENERIC_DOMAINS", "PM_GENERIC_DOMAINS_OF",
+                         "REGULATOR", "REGULATOR_FIXED_VOLTAGE",
+                         "REGULATOR_QCOM_SMD_RPM", "QCOM_RPMPD", "PM_OPP",
+                         "INTERCONNECT", "INTERCONNECT_CLK",
+                         "INTERCONNECT_QCOM", "INTERCONNECT_QCOM_SDM660",
+                         "INTERCONNECT_QCOM_SMD_RPM"),
 }
 RAM_PROBE_CPIO = pathlib.Path("ram-probe") / "initramfs.cpio"
 BASE = 0x80000000
