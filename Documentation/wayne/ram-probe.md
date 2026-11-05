@@ -179,7 +179,20 @@ walks every RPM power domain; on this platform that write path hangs before
 the pstore console is available. This branch therefore keeps provider
 registration and OPP parsing but makes the sync_state callback a no-op.
 This is a bring-up workaround, not a claim that the RPM power-domain votes
-work. The driver's genpd registration
-parses its OPP table, so QCOM_RPMPD now selects PM_OPP; without that
-selection dev_pm_opp_of_add_table_indexed() is a stub returning
--EOPNOTSUPP and the probe fails. Physical validation is pending.
+work. The driver's genpd registration parses its OPP table, so QCOM_RPMPD
+now selects PM_OPP; without that selection dev_pm_opp_of_add_table_indexed()
+is a stub returning -EOPNOTSUPP and the probe fails.
+
+Physical validation passed on 2026-11-06 at commit
+cd3f8e67cb3630ea2f8b5c927b55d69a9d882526. The 64 MiB image (SHA-256
+c7780ec2df15d8a5f2693300e26d5c2419ddd024f6d9b90322aade4d2d2c1045) and its
+compact form (b423e677ad0d6a4eb951597daa5fe2f8a0f6e8edf88a5223487a31f8de556aae)
+reached PID 1 on the physical phone. Pstore recorded probe of
+power-controller returning 0, PID 1 heartbeats at about 32, 62 and 92
+seconds, REBOOTING_AFTER_TEST at about 92 seconds, the qcom-rpmpd shutdown
+callback and "reboot: Restarting system". No panic, SError or failed probe
+was present. The phone returned to the original Android system; boot and
+recovery hashes still matched their read-only backups. This establishes
+provider registration and OPP parsing in the RAM-only profile. Because
+sync_state is a no-op in this branch, it does not establish boot-time RPM
+power-domain votes.
