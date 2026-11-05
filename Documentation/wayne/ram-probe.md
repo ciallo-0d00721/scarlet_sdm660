@@ -174,7 +174,12 @@ This stage adds QCOM_RPMPD to the rails configuration in a 156-value checked
 fragment, using separate out-6.12-ram-rpmpd outputs. It keeps the board DTB,
 diagnostic initramfs and the retained-clock/domain/rail command line unchanged.
 The provider registers the SDM660 CX and MX RPM power domains, but no eMMC, USB,
-display or multimedia consumer is enabled. The driver's genpd registration
+display or multimedia consumer is enabled. The driver's boot-time sync_state
+walks every RPM power domain; on this platform that write path hangs before
+the pstore console is available. This branch therefore keeps provider
+registration and OPP parsing but makes the sync_state callback a no-op.
+This is a bring-up workaround, not a claim that the RPM power-domain votes
+work. The driver's genpd registration
 parses its OPP table, so QCOM_RPMPD now selects PM_OPP; without that
 selection dev_pm_opp_of_add_table_indexed() is a stub returning
 -EOPNOTSUPP and the probe fails. Physical validation is pending.

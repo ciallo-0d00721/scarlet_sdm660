@@ -1138,28 +1138,13 @@ static int rpmpd_probe(struct platform_device *pdev)
 
 static void rpmpd_sync_state(struct device *dev)
 {
-	const struct rpmpd_desc *desc = of_device_get_match_data(dev);
-	struct rpmpd **rpmpds = desc->rpmpds;
-	struct rpmpd *pd;
-	unsigned int i;
-	int ret;
-
-	mutex_lock(&rpmpd_lock);
-	for (i = 0; i < desc->num_pds; i++) {
-		pd = rpmpds[i];
-		if (!pd)
-			continue;
-
-		pd->state_synced = true;
-
-		if (!pd->enabled)
-			pd->corner = 0;
-
-		ret = rpmpd_aggregate_corner(pd);
-		if (ret)
-			dev_err(dev, "failed to sync %s: %d\n", pd->pd.name, ret);
-	}
-	mutex_unlock(&rpmpd_lock);
+	/*
+	 * Wayne bring-up: this callback walks every RPM power domain and
+	 * hangs on this platform before the pstore console is available.
+	 * Keep the provider registered but do not send boot-time RPM votes
+	 * until the resource mapping is verified.
+	 */
+	(void)dev;
 }
 
 static struct platform_driver rpmpd_driver = {
