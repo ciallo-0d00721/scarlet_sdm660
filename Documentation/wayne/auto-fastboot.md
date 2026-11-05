@@ -43,7 +43,7 @@ An unchanged embedded cpio no longer forces an Image relink between profiles.
 | Stage | Software deadline | Hardware configuration | Intended result |
 | --- | --- | --- | --- |
 | bootguard | 60 seconds | 30-second watchdog; kernel open window 120 seconds | Timer restarts to Fastboot. |
-| bootguardwdt | 180 seconds | 30-second watchdog; kernel open window 30 seconds | Watchdog expires before the software timer. |
+| bootguardwdt | 75 seconds | 30-second watchdog; kernel keepalives disabled | Isolates hardware watchdog expiry before the software fallback. |
 | bootguardpanic | PID 1 exits after 5 loop seconds; panic timeout 5 seconds | Same watchdog fallback as bootguard | Panic restarts to Fastboot. |
 
 The open window allows kernel watchdog keepalives without a userspace daemon.
@@ -60,7 +60,12 @@ It preserves requested blacklists and verifies they actually fired. Use
 --expect panic only for the intentional PID 1 exit profile. QEMU tests PID 1,
 software reboot and panic behavior, not the phone IMEM or watchdog hardware.
 
-Physical validation of these three recovery stages is pending. A successful
-recovery must be confirmed with the Fastboot protocol on the original Wayne
-serial, not inferred from a Qualcomm USB PID. The host can then temporarily
-boot the verified stock backup to collect pstore without flashing a partition.
+On a Mi 6X, build `79c2040a8554` returned to Fastboot after approximately
+71 seconds with the timer and 19 seconds with the intentional PID 1 panic.
+The host verified the Fastboot protocol and then temporarily booted the
+verified original image to read pstore. The first watchdog control
+(30-second open window, 180-second software deadline) stayed up past 60
+seconds and returned to Fastboot after approximately 190 seconds. This
+does not establish hardware watchdog expiry. The updated watchdog-only
+control disables kernel keepalives so the hardware and software recovery
+deadlines can be observed separately.

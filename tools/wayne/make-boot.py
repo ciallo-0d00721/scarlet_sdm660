@@ -66,8 +66,8 @@ BOOTGUARD_CMDLINE = (RAM_PROBE_CMDLINE.replace("panic=0", "panic=5")
 BOOTGUARD_PROFILES = ("ram-bootguard", "ram-bootguard-wdt", "ram-bootguard-panic")
 PROFILES.update({
     "ram-bootguard": BOOTGUARD_CMDLINE,
-    "ram-bootguard-wdt": BOOTGUARD_CMDLINE.replace("wayne.reboot_after=60", "wayne.reboot_after=180")
-                                        .replace("watchdog.open_timeout=120", "watchdog.open_timeout=30"),
+    "ram-bootguard-wdt": BOOTGUARD_CMDLINE.replace("wayne.reboot_after=60", "wayne.reboot_after=75") +
+                         " watchdog.handle_boot_enabled=0",
     "ram-bootguard-panic": BOOTGUARD_CMDLINE + " wayne.test_pid1_exit=1",
 })
 COMMON_REQUIRED = ("BLK_DEV_INITRD", "RD_GZIP", "BINFMT_ELF", "DEVTMPFS", "PROC_FS", "SYSFS",
@@ -221,7 +221,8 @@ PROFILE_REQUIRED = {
 PROFILE_REQUIRED.update({
     name: PROFILE_REQUIRED["ram-mmcc"] + (
         "WATCHDOG", "WATCHDOG_CORE", "WATCHDOG_NOWAYOUT", "WATCHDOG_HANDLE_BOOT_ENABLED",
-        "QCOM_WDT", "MFD_SYSCON", "SYSCON_REBOOT_MODE", "REBOOT_MODE", "QCOM_WAYNE_BOOTGUARD", "SPMI", "SPMI_MSM_PMIC_ARB",
+        "QCOM_WDT", "MFD_SYSCON", "SYSCON_REBOOT_MODE", "REBOOT_MODE",
+        "QCOM_WAYNE_BOOTGUARD", "SPMI", "SPMI_MSM_PMIC_ARB",
         "MFD_SPMI_PMIC", "POWER_RESET_QCOM_PON")
     for name in BOOTGUARD_PROFILES
 })
