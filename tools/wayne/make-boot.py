@@ -62,13 +62,18 @@ BOOTGUARD_CMDLINE = (RAM_PROBE_CMDLINE.replace("panic=0", "panic=5")
                     .replace("wayne.reboot_after=90", "wayne.reboot_after=60") +
                     " clk_ignore_unused pd_ignore_unused regulator_ignore_unused "
                     "wayne.bootguard=1 wayne.reboot_mode=bootloader "
-                    "qcom_wdt.boot_timeout=30 watchdog.open_timeout=120")
-BOOTGUARD_PROFILES = ("ram-bootguard", "ram-bootguard-wdt", "ram-bootguard-panic")
+                    "qcom_wdt.boot_timeout=30 watchdog.open_timeout=120 wayne.bootguard_deadline=150")
+BOOTGUARD_PROFILES = ("ram-bootguard", "ram-bootguard-wdt", "ram-bootguard-panic",
+                      "ram-bootguard-deadline")
 PROFILES.update({
     "ram-bootguard": BOOTGUARD_CMDLINE,
     "ram-bootguard-wdt": BOOTGUARD_CMDLINE.replace("wayne.reboot_after=60", "wayne.reboot_after=75") +
                          " watchdog.handle_boot_enabled=0",
     "ram-bootguard-panic": BOOTGUARD_CMDLINE + " wayne.test_pid1_exit=1",
+    "ram-bootguard-deadline": BOOTGUARD_CMDLINE.replace("wayne.reboot_after=60",
+                                                       "wayne.reboot_after=180")
+                                             .replace("wayne.bootguard_deadline=150",
+                                                      "wayne.bootguard_deadline=45"),
 })
 COMMON_REQUIRED = ("BLK_DEV_INITRD", "RD_GZIP", "BINFMT_ELF", "DEVTMPFS", "PROC_FS", "SYSFS",
                    "TMPFS", "PSTORE_RAM")

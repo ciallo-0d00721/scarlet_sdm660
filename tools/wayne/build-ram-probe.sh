@@ -25,6 +25,8 @@ case "$stage" in
     usb2nodwc3) name=ram-usb2; defconfig=wayne_ram_usb2_defconfig; boot_profile=ram-usb2-nodwc3 ;;
     bootguard) name=ram-bootguard; defconfig=wayne_ram_bootguard_defconfig; boot_profile=ram-bootguard ;;
     bootguardwdt) name=ram-bootguard; defconfig=wayne_ram_bootguard_defconfig; boot_profile=ram-bootguard-wdt ;;
+    bootguarddeadline) name=ram-bootguard; defconfig=wayne_ram_bootguard_defconfig
+        boot_profile=ram-bootguard-deadline ;;
     bootguardpanic) name=ram-bootguard; defconfig=wayne_ram_bootguard_defconfig; boot_profile=ram-bootguard-panic ;;
     *) echo "Unknown RAM probe stage: $stage" >&2; exit 1 ;;
 esac

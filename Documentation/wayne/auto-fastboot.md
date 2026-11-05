@@ -35,8 +35,9 @@ kernel panic recovery path. It is absent from normal guarded tests.
     JOBS=24 WAYNE_RAM_PROBE_STAGE=bootguard tools/wayne/build-ram-probe.sh boot
     JOBS=24 WAYNE_RAM_PROBE_STAGE=bootguardwdt tools/wayne/build-ram-probe.sh boot
     JOBS=24 WAYNE_RAM_PROBE_STAGE=bootguardpanic tools/wayne/build-ram-probe.sh boot
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=bootguarddeadline tools/wayne/build-ram-probe.sh boot
 
-All three use the same kernel configuration. Their packed images
+These stages use the same kernel configuration. Their packed images
 have separate default directories and differ in the diagnostic command line.
 An unchanged embedded cpio no longer forces an Image relink between profiles.
 
@@ -45,6 +46,11 @@ An unchanged embedded cpio no longer forces an Image relink between profiles.
 | bootguard | 60 seconds | 30-second watchdog; kernel open window 120 seconds | Timer restarts to Fastboot. |
 | bootguardwdt | 75 seconds | 30-second watchdog; kernel keepalives disabled | Isolates hardware watchdog expiry before the software fallback. |
 | bootguardpanic | PID 1 exits after 5 loop seconds; panic timeout 5 seconds | Same watchdog fallback as bootguard | Panic restarts to Fastboot. |
+| bootguarddeadline | 180 seconds in PID 1; 45 seconds in the kernel | Same watchdog fallback as bootguard | Tests the kernel deadline independently of userspace. |
+
+Guarded images also schedule a kernel restart at 150 seconds by default.
+This covers a blocked userspace or probe while the kernel can still run
+work. It cannot reset a CPU that has stopped scheduling.
 
 The open window allows kernel watchdog keepalives without a userspace daemon.
 A hard lockup after arming stops those keepalives; a live kernel stalled during
@@ -69,3 +75,9 @@ seconds and returned to Fastboot after approximately 190 seconds. This
 does not establish hardware watchdog expiry. The updated watchdog-only
 control disables kernel keepalives so the hardware and software recovery
 deadlines can be observed separately.
+
+The keepalive-disabled control with build `81502d08bf71` also stayed
+up past the 30-second watchdog timeout. The board now describes the
+vendor bark interrupt. The opt-in watchdog uses separate bark/bite
+thresholds, unmasks bark, and resets the counter after enabling it.
+Physical verification of this sequence is pending.

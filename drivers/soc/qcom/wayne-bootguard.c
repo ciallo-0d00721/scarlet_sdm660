@@ -8,12 +8,14 @@
 #include <linux/of_address.h>
 #include <linux/panic_notifier.h>
 #include <linux/reboot.h>
+#include <linux/workqueue.h>
 #include <soc/qcom/wayne-bootguard.h>
 
 static bool bootguard_enabled;
 static void __iomem *bootguard_reason;
 static u32 bootguard_magic;
 static bool bootguard_armed;
+static unsigned int bootguard_deadline;
 
 bool wayne_bootguard_is_armed(void)
 {
@@ -25,6 +27,25 @@ static int __init wayne_bootguard_setup(char *value)
 	return !kstrtobool(value, &bootguard_enabled);
 }
 __setup("wayne.bootguard=", wayne_bootguard_setup);
+
+static int __init wayne_bootguard_deadline_setup(char *value)
+{
+	unsigned int seconds;
+
+	if (kstrtouint(value, 10, &seconds) || seconds < 10 || seconds > 600)
+		return 0;
+	bootguard_deadline = seconds;
+	return 1;
+}
+__setup("wayne.bootguard_deadline=", wayne_bootguard_deadline_setup);
+
+static void wayne_bootguard_deadline_restart(struct work_struct *work)
+{
+	pr_emerg("WAYNE_BOOTGUARD_DEADLINE seconds=%u\n", bootguard_deadline);
+	emergency_restart();
+}
+
+static DECLARE_DELAYED_WORK(bootguard_deadline_work, wayne_bootguard_deadline_restart);
 
 static void wayne_bootguard_write_reason(void)
 {
@@ -113,6 +134,9 @@ static int __init wayne_bootguard_init(void)
 	bootguard_armed = true;
 	pr_info("WAYNE_BOOTGUARD_ARMED bootloader=%#x offset=%#x\n",
 		bootguard_magic, offset);
+	if (bootguard_deadline)
+		queue_delayed_work(system_highpri_wq, &bootguard_deadline_work,
+				   msecs_to_jiffies(bootguard_deadline * 1000));
 	of_node_put(mode);
 	return 0;
 

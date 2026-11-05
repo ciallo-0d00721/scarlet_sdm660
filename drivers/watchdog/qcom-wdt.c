@@ -21,6 +21,7 @@ enum wdt_reg {
 };
 
 #define QCOM_WDT_ENABLE		BIT(0)
+#define QCOM_WDT_UNMASKED_IRQ	BIT(1)
 
 #if IS_ENABLED(CONFIG_QCOM_WAYNE_BOOTGUARD)
 static unsigned int boot_timeout;
@@ -56,6 +57,7 @@ struct qcom_wdt {
 	unsigned long		rate;
 	void __iomem		*base;
 	const u32		*layout;
+	bool			wayne_boot;
 };
 
 static void __iomem *wdt_addr(struct qcom_wdt *wdt, enum wdt_reg reg)
@@ -73,6 +75,11 @@ static irqreturn_t qcom_wdt_isr(int irq, void *arg)
 {
 	struct watchdog_device *wdd = arg;
 
+	struct qcom_wdt *wdt = to_qcom_wdt(wdd);
+
+	if (wdt->wayne_boot)
+		dev_notice(wdd->parent, "WAYNE_BOOT_WATCHDOG_BARK status=%#x\n",
+			   readl(wdt_addr(wdt, WDT_STS)));
 	watchdog_notify_pretimeout(wdd);
 
 	return IRQ_HANDLED;
@@ -82,12 +89,19 @@ static int qcom_wdt_start(struct watchdog_device *wdd)
 {
 	struct qcom_wdt *wdt = to_qcom_wdt(wdd);
 	unsigned int bark = wdd->timeout - wdd->pretimeout;
+	u32 enable = QCOM_WDT_ENABLE;
 
 	writel(0, wdt_addr(wdt, WDT_EN));
-	writel(1, wdt_addr(wdt, WDT_RST));
+	if (!wdt->wayne_boot)
+		writel(1, wdt_addr(wdt, WDT_RST));
 	writel(bark * wdt->rate, wdt_addr(wdt, WDT_BARK_TIME));
 	writel(wdd->timeout * wdt->rate, wdt_addr(wdt, WDT_BITE_TIME));
-	writel(QCOM_WDT_ENABLE, wdt_addr(wdt, WDT_EN));
+	if (wdt->wayne_boot)
+		enable |= QCOM_WDT_UNMASKED_IRQ;
+	writel(enable, wdt_addr(wdt, WDT_EN));
+	/* Wayne firmware's watchdog uses an unmasked bark and reset after enable. */
+	if (wdt->wayne_boot)
+		writel(1, wdt_addr(wdt, WDT_RST));
 	return 0;
 }
 
@@ -294,6 +308,10 @@ static int qcom_wdt_probe(struct platform_device *pdev)
 		    boot_timeout > wdt->wdd.max_timeout)
 			return dev_err_probe(dev, -EINVAL, "invalid boot watchdog timeout\n");
 		wdt->wdd.timeout = boot_timeout;
+		if (wdt->wdd.info->options & WDIOF_PRETIMEOUT) {
+			wdt->wayne_boot = true;
+			wdt->wdd.pretimeout = min(boot_timeout - 1, 3U);
+		}
 		boot_start = true;
 	}
 #endif
@@ -318,8 +336,10 @@ static int qcom_wdt_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, wdt);
 	if (boot_start)
-		dev_notice(dev, "WAYNE_BOOT_WATCHDOG_ACTIVE timeout=%u rate=%lu\n",
-			   wdt->wdd.timeout, wdt->rate);
+		dev_notice(dev, "WAYNE_BOOT_WATCHDOG_ACTIVE timeout=%u rate=%lu control=%#x bark=%#x bite=%#x\n",
+			   wdt->wdd.timeout, wdt->rate, readl(wdt_addr(wdt, WDT_EN)),
+			   readl(wdt_addr(wdt, WDT_BARK_TIME)),
+			   readl(wdt_addr(wdt, WDT_BITE_TIME)));
 	return 0;
 }
 

@@ -97,6 +97,7 @@
 	watchdog@17817000 {
 		compatible = "qcom,apss-wdt-sdm660", "qcom,kpss-wdt";
 		reg = <0x17817000 0x1000>;
+		interrupts = <GIC_SPI 3 IRQ_TYPE_EDGE_RISING>;
 		clocks = <&sleep_clk>;
 		clock-names = "sleep";
 	};
