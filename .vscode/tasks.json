@@ -79,7 +79,8 @@
         "tlmm",
         "rpm",
         "rpmclk",
-        "gcc"
+        "gcc",
+        "rails"
       ],
       "default": "core"
     }

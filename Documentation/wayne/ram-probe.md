@@ -117,7 +117,14 @@ packer profile additionally requires these drivers and generic power domains,
 and appends pd_ignore_unused to the existing retained-clock command line.
 The phase preserves unused clock and power-domain state while GCC is first
 registered; regulator, storage, USB and multimedia clock drivers remain off.
-Its outputs use out-6.12-ram-gcc. GCC-stage physical validation is pending.
+Its outputs use out-6.12-ram-gcc. At commit
+57d62638310da2b1ec012e2aade07d3b90c04baf, the physical phone displayed
+BRINGUP_READY and a 30-second PID 1 heartbeat. Pstore recorded the GCC
+clock-controller probe returning 0 and a later shutdown callback around
+92 seconds, after which original Android was reachable. Some pstore bytes
+were corrupted; a clean REBOOTING_AFTER_TEST string was not recovered in
+this trial, so the directly observed evidence is readiness, heartbeat,
+successful GCC probe, shutdown and return to Android.
 
 ## VS Code
 
@@ -127,3 +134,19 @@ The default is the verified core stage; consult the phase-specific physical
 results above before choosing another stage. Each stage uses its own output
 directory, including when the standard tasks configure WAYNE_OUT. Existing
 standard tasks also set JOBS=24. No task flashes or reboots a phone.
+
+## RPM regulator isolation stage
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=rails tools/wayne/build-ram-probe.sh boot
+
+This stage adds the regulator core, fixed voltage provider and QCOM_SMD_RPM
+regulator driver to the GCC stage in a 155-value checked fragment. The board
+DTB, diagnostic initramfs and requested regulator constraints remain unchanged.
+The PM660 L13 and PM660L L1 voltage ranges were cross-checked against the
+Wayne vendor regulator data before enabling the provider.
+
+The ram-rails packer profile requires those regulator drivers and appends
+regulator_ignore_unused to the retained-clock/domain command line. This
+prevents unused-rail cleanup but deliberately does not bypass regulator
+registration or its initial constraints. SPMI, storage and USB remain off.
+Outputs use out-6.12-ram-rails. Physical validation of this stage is pending.
