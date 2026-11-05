@@ -333,4 +333,18 @@ build.prop reports Android 12 / SDK 32, not Android 14.
 This stage adds SDM_MMCC_660 to the system-mount configuration in a 173-value
 checked fragment. MMCC supplies the AHB clock consumed by mnoc; it is expected
 to let the deferred mnoc interconnect probe complete. The profile does not
-mount any filesystem. Physical validation is pending.
+mount any filesystem.
+
+Physical validation passed on 2026-11-06 at commit
+d487d2cdb5703439eb659da4cc4d312e926df744. The 64 MiB image (SHA-256
+7cffae2fc4988643848717a9ec24fd6c7462b24994b99c1878ffa9149e8f8955) and its
+compact form
+(0446ecacc5226f0c9b42e1906eb92be3e224d07c1c050cfec1615994656f82b4)
+reached PID 1 on the physical phone. Pstore recorded mmcc_660_driver_init
+and c8c0000.clock-controller probing 0; the initially deferred
+1745000.interconnect (mnoc) then probed 0 during deferred probe at about
+1.89 seconds, completing the interconnect provider set. The eMMC
+controller and card still probed, the heartbeats and the 90 second reboot
+followed, and the phone returned to the original Android system with boot
+and recovery hashes unchanged. No fatal markers appeared. Some pstore
+bytes were corrupted.
