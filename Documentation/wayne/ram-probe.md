@@ -100,4 +100,30 @@ clk_ignore_unused to the prior RAM-probe command line. This deliberately
 retains firmware clocks while the RPM clock provider is first handed over.
 Unlike the previous SCM/TLMM steps, this stage changes that command-line
 parameter as well as the stated clock configuration. Physical validation
-of the RPM-clock stage is pending.
+of the RPM-clock stage passed on the physical phone at commit
+ae4fd62728bc12971b73d7ccd295b2273d126bea: the screen showed BRINGUP_READY,
+and pstore recorded the RPM clock-controller probe returning 0, the expected
+Not disabling unused clocks message, a later PID 1 heartbeat, and the planned
+reboot at about 92 seconds. The phone returned to original Android. Some
+pstore bytes were corrupted, so only intact markers are treated as evidence.
+
+## GCC isolation stage
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=gcc tools/wayne/build-ram-probe.sh boot
+
+This stage adds SDM_GCC_660 and its QCOM_GDSC support to the RPM-clock
+configuration. All 154 requested requirements are checked. The ram-gcc
+packer profile additionally requires these drivers and generic power domains,
+and appends pd_ignore_unused to the existing retained-clock command line.
+The phase preserves unused clock and power-domain state while GCC is first
+registered; regulator, storage, USB and multimedia clock drivers remain off.
+Its outputs use out-6.12-ram-gcc. GCC-stage physical validation is pending.
+
+## VS Code
+
+Open this native checkout through VS Code Remote SSH, then run the task
+Wayne 6.12: RAM diagnostic boot.img (24 threads) and select the desired stage.
+The default is the verified core stage; consult the phase-specific physical
+results above before choosing another stage. Each stage uses its own output
+directory, including when the standard tasks configure WAYNE_OUT. Existing
+standard tasks also set JOBS=24. No task flashes or reboots a phone.

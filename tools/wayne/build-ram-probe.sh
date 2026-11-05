@@ -10,6 +10,7 @@ case "$stage" in
     tlmm) name=ram-tlmm; defconfig=wayne_ram_tlmm_defconfig ;;
     rpm) name=ram-rpm; defconfig=wayne_ram_rpm_defconfig ;;
     rpmclk) name=ram-rpmclk; defconfig=wayne_ram_rpmclk_defconfig; boot_profile=ram-clocks ;;
+    gcc) name=ram-gcc; defconfig=wayne_ram_gcc_defconfig; boot_profile=ram-gcc ;;
     *) echo "Unknown RAM probe stage: $stage" >&2; exit 1 ;;
 esac
 out=${WAYNE_RAM_PROBE_OUT:-${WAYNE_OUT:-"$root/../out-6.12-$name"}}

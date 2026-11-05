@@ -1,9 +1,87 @@
 {
   "version": "2.0.0",
-  "options": {"env": {"WAYNE_OUT": "${workspaceFolder}/../out-6.12"}},
+  "options": {
+    "env": {
+      "WAYNE_OUT": "${workspaceFolder}/../out-6.12",
+      "JOBS": "24"
+    }
+  },
   "tasks": [
-    {"label": "Wayne 6.12: configure", "type": "process", "command": "bash", "args": ["${workspaceFolder}/tools/wayne/build.sh", "config"], "problemMatcher": ["$gcc"]},
-    {"label": "Wayne 6.12: build kernel", "type": "process", "command": "bash", "args": ["${workspaceFolder}/tools/wayne/build.sh", "image"], "group": {"kind": "build", "isDefault": true}, "problemMatcher": ["$gcc"]},
-    {"label": "Wayne 6.12: build boot.img", "type": "process", "command": "bash", "args": ["${workspaceFolder}/tools/wayne/build.sh", "boot"], "problemMatcher": ["$gcc"]}
+    {
+      "label": "Wayne 6.12: configure",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/tools/wayne/build.sh",
+        "config"
+      ],
+      "problemMatcher": [
+        "$gcc"
+      ]
+    },
+    {
+      "label": "Wayne 6.12: build kernel",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/tools/wayne/build.sh",
+        "image"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ]
+    },
+    {
+      "label": "Wayne 6.12: build boot.img",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/tools/wayne/build.sh",
+        "boot"
+      ],
+      "problemMatcher": [
+        "$gcc"
+      ]
+    },
+    {
+      "label": "Wayne 6.12: RAM diagnostic boot.img (24 threads)",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/tools/wayne/build-ram-probe.sh",
+        "boot"
+      ],
+      "options": {
+        "env": {
+          "WAYNE_OUT": "",
+          "WAYNE_BOOT_OUT": "",
+          "WAYNE_RAM_PROBE_STAGE": "${input:wayneRamStage}",
+          "JOBS": "24"
+        }
+      },
+      "problemMatcher": [
+        "$gcc"
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "wayneRamStage",
+      "type": "pickString",
+      "description": "RAM bring-up stage; consult Documentation/wayne/ram-probe.md for physical validation status.",
+      "options": [
+        "core",
+        "scm",
+        "tlmm",
+        "rpm",
+        "rpmclk",
+        "gcc"
+      ],
+      "default": "core"
+    }
   ]
 }

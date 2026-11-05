@@ -21,7 +21,8 @@ RAM_PROBE_CMDLINE = ("console=tty0 fbcon=font:TER16x32 maxcpus=1 log_buf_len=1M 
                      "loglevel=8 ignore_loglevel initcall_debug printk.devkmsg=on nokaslr "
                      "panic=0 wayne.reboot_after=90")
 PROFILES = {"standard": CMDLINE, "ram-probe": RAM_PROBE_CMDLINE,
-            "ram-clocks": RAM_PROBE_CMDLINE + " clk_ignore_unused"}
+            "ram-clocks": RAM_PROBE_CMDLINE + " clk_ignore_unused",
+            "ram-gcc": RAM_PROBE_CMDLINE + " clk_ignore_unused pd_ignore_unused"}
 COMMON_REQUIRED = ("BLK_DEV_INITRD", "RD_GZIP", "BINFMT_ELF", "DEVTMPFS", "PROC_FS", "SYSFS",
                    "TMPFS", "PSTORE_RAM")
 PROFILE_REQUIRED = {
@@ -29,6 +30,9 @@ PROFILE_REQUIRED = {
     "ram-probe": ("VT_CONSOLE", "FB_SIMPLE", "FRAMEBUFFER_CONSOLE"),
     "ram-clocks": ("VT_CONSOLE", "FB_SIMPLE", "FRAMEBUFFER_CONSOLE",
                    "COMMON_CLK_QCOM", "QCOM_CLK_SMD_RPM"),
+    "ram-gcc": ("VT_CONSOLE", "FB_SIMPLE", "FRAMEBUFFER_CONSOLE",
+                "COMMON_CLK_QCOM", "QCOM_CLK_SMD_RPM", "SDM_GCC_660",
+                "QCOM_GDSC", "PM_GENERIC_DOMAINS"),
 }
 RAM_PROBE_CPIO = pathlib.Path("ram-probe") / "initramfs.cpio"
 BASE = 0x80000000
