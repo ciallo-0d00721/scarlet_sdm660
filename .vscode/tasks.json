@@ -82,7 +82,8 @@
         "gcc",
         "rails",
         "rpmpd",
-        "interconnect"
+        "interconnect",
+        "emmc"
       ],
       "default": "core"
     }

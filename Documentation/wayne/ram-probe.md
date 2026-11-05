@@ -221,3 +221,14 @@ exercised. The sdhc_1 path's a2noc/gnoc/bimc/cnoc providers are bound;
 mnoc remains deferred for a later MMCC stage. Boot and recovery hashes
 still matched their read-only backups, and the phone returned to the
 original Android system. Some pstore bytes were corrupted.
+
+## eMMC card-detection isolation stage
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=emmc tools/wayne/build-ram-probe.sh boot
+
+This stage adds MMC, SDHCI, the SDHCI platform helper and SDHCI MSM to the
+interconnect configuration in a 164-value checked fragment. CONFIG_BLOCK and
+MMC_BLOCK remain disabled, so no /dev/mmcblk device or partition scan is
+created; the driver still initialises the non-removable eMMC on sdhc_1 and may
+read CID/CSD/EXT_CSD. The L4/L8 rails and the a2noc/gnoc/bimc/cnoc
+interconnects are the first real consumers. Physical validation is pending.

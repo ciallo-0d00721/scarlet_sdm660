@@ -14,6 +14,7 @@ case "$stage" in
     rails) name=ram-rails; defconfig=wayne_ram_rails_defconfig; boot_profile=ram-rails ;;
     rpmpd) name=ram-rpmpd; defconfig=wayne_ram_rpmpd_defconfig; boot_profile=ram-rpmpd ;;
     interconnect) name=ram-interconnect; defconfig=wayne_ram_interconnect_defconfig; boot_profile=ram-interconnect ;;
+    emmc) name=ram-emmc; defconfig=wayne_ram_emmc_defconfig; boot_profile=ram-emmc ;;
     *) echo "Unknown RAM probe stage: $stage" >&2; exit 1 ;;
 esac
 out=${WAYNE_RAM_PROBE_OUT:-${WAYNE_OUT:-"$root/../out-6.12-$name"}}
