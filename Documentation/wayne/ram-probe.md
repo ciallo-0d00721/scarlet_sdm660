@@ -249,3 +249,13 @@ returned to the original Android system at about 140 seconds; boot and
 recovery hashes still matched their read-only backups. The reset warning
 did not prevent card detection but needs follow-up before any block-layer
 or filesystem work.
+
+## Read-only block/partition stage
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=block tools/wayne/build-ram-probe.sh boot
+
+This stage adds the block layer, MMC block driver, 64 minors per device,
+GPT/MSDOS partition parsers and CRC32 to the eMMC configuration in a
+169-value checked fragment. The initramfs still does not mount any partition;
+the kernel only reads the partition table and creates mmcblk0/pN nodes.
+No filesystem or write path is enabled. Physical validation is pending.

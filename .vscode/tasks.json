@@ -83,7 +83,8 @@
         "rails",
         "rpmpd",
         "interconnect",
-        "emmc"
+        "emmc",
+        "block"
       ],
       "default": "core"
     }

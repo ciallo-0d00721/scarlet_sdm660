@@ -15,6 +15,7 @@ case "$stage" in
     rpmpd) name=ram-rpmpd; defconfig=wayne_ram_rpmpd_defconfig; boot_profile=ram-rpmpd ;;
     interconnect) name=ram-interconnect; defconfig=wayne_ram_interconnect_defconfig; boot_profile=ram-interconnect ;;
     emmc) name=ram-emmc; defconfig=wayne_ram_emmc_defconfig; boot_profile=ram-emmc ;;
+    block) name=ram-block; defconfig=wayne_ram_block_defconfig; boot_profile=ram-block ;;
     *) echo "Unknown RAM probe stage: $stage" >&2; exit 1 ;;
 esac
 out=${WAYNE_RAM_PROBE_OUT:-${WAYNE_OUT:-"$root/../out-6.12-$name"}}
