@@ -58,4 +58,26 @@ fragment. Relative to the SCM-stage .config, only PINCTRL_SDM660 changes from
 n to y, besides the descriptive LOCALVERSION suffix. The board DTB retains
 the GPIO 8-11 firmware ownership reservation already checked by inspect-dtb.
 The kernel and diagnostic userspace use the same unchanged RAM-only boot
-parameters. TLMM-stage physical validation is pending.
+parameters. The TLMM-stage image at
+334a02c219b68e4fb3f0f29271258fe844186774 reached PID 1 on the physical
+phone, and pstore recorded probe of 3100000.pinctrl returned 0, the PID 1
+marker, and REBOOTING_AFTER_TEST at approximately 92 seconds. The phone
+returned to original Android; some pstore bytes were corrupted. This tests
+probe and continued RAM userspace, not the electrical behavior of every GPIO.
+
+## RPM transport isolation stage
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=rpm tools/wayne/build-ram-probe.sh boot
+
+This stage restores MAILBOX, the Qualcomm APCS IPC mailbox, GLINK RPM and
+QCOM_SMD_RPM transport. It has 146 checked requirements and separate
+out-6.12-ram-rpm outputs. QCOM_SMEM, RPM clock/regulator/power-domain clients,
+GCC, USB and storage remain disabled. Merely registering the transport does
+not establish the correctness of later voltage/frequency votes.
+
+The APCS IPC driver calls devm_regmap_init_mmio, but the v6.12 Kconfig option
+did not select REGMAP_MMIO. In this minimal profile, olddefconfig dropped
+both requested REGMAP and REGMAP_MMIO before the fix. Adding the missing
+REGMAP_MMIO selection makes all 146 requirements survive. This dependency
+fix applies only when QCOM_APCS_IPC is selected and adds no unrelated hardware
+driver. RPM-stage physical validation is pending.
