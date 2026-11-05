@@ -12,6 +12,7 @@ case "$stage" in
     rpmclk) name=ram-rpmclk; defconfig=wayne_ram_rpmclk_defconfig; boot_profile=ram-clocks ;;
     gcc) name=ram-gcc; defconfig=wayne_ram_gcc_defconfig; boot_profile=ram-gcc ;;
     rails) name=ram-rails; defconfig=wayne_ram_rails_defconfig; boot_profile=ram-rails ;;
+    rpmpd) name=ram-rpmpd; defconfig=wayne_ram_rpmpd_defconfig; boot_profile=ram-rpmpd ;;
     *) echo "Unknown RAM probe stage: $stage" >&2; exit 1 ;;
 esac
 out=${WAYNE_RAM_PROBE_OUT:-${WAYNE_OUT:-"$root/../out-6.12-$name"}}

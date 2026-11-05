@@ -80,7 +80,8 @@
         "rpm",
         "rpmclk",
         "gcc",
-        "rails"
+        "rails",
+        "rpmpd"
       ],
       "default": "core"
     }

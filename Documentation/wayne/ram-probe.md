@@ -165,3 +165,13 @@ The phone returned to the original Android system; boot and recovery hashes
 still matched their read-only backups. This establishes provider registration
 and initial constraints in the RAM-only profile. The eMMC and USB consumers
 remain disabled, so it does not establish regulator behavior under load.
+
+## RPM power domain isolation stage
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=rpmpd tools/wayne/build-ram-probe.sh boot
+
+This stage adds QCOM_RPMPD to the rails configuration in a 155-value checked
+fragment, using separate out-6.12-ram-rpmpd outputs. It keeps the board DTB,
+diagnostic initramfs and the retained-clock/domain/rail command line unchanged.
+The provider registers the SDM660 CX and MX RPM power domains, but no eMMC, USB,
+display or multimedia consumer is enabled. Physical validation is pending.
