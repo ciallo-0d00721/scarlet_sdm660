@@ -231,4 +231,21 @@ interconnect configuration in a 164-value checked fragment. CONFIG_BLOCK and
 MMC_BLOCK remain disabled, so no /dev/mmcblk device or partition scan is
 created; the driver still initialises the non-removable eMMC on sdhc_1 and may
 read CID/CSD/EXT_CSD. The L4/L8 rails and the a2noc/gnoc/bimc/cnoc
-interconnects are the first real consumers. Physical validation is pending.
+interconnects are the first real consumers.
+
+Physical validation passed with a controller-reset warning on 2026-11-06 at
+commit b70c806d9a80e928a2941ab81ba499befb33eae6. The 64 MiB image
+(SHA-256 79166383613bd69f6b960f8fda2e5444c033a7f8d3b0b68cacdd4f940180790c)
+and its compact form
+(363ed323cd75e840fe78ef9cfdb992d6e27381b12169d5e46efafe4cb3f833c9)
+reached PID 1 on the physical phone. Pstore recorded c0c4000.mmc probing 0
+after an initial deferred retry, the SDHCI MSM vendor register dump with
+"mmc1: Reset 0x1 never completed", and
+"mmc1: new HS200 MMC card at address 0001". The init listed
+/sys/class/mmc_host/mmc1; CONFIG_BLOCK and MMC_BLOCK stayed off, so no
+/dev/mmcblk device or partition scan was created. The L4/L8 rails and the
+a2noc/gnoc/bimc/cnoc interconnects were used by the MMC probe. The phone
+returned to the original Android system at about 140 seconds; boot and
+recovery hashes still matched their read-only backups. The reset warning
+did not prevent card detection but needs follow-up before any block-layer
+or filesystem work.
