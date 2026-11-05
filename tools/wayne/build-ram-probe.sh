@@ -2,8 +2,14 @@
 # Build the RAM-only Wayne diagnostic profile in this native Linux 6.12 checkout.
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
-out=${WAYNE_RAM_PROBE_OUT:-${WAYNE_OUT:-"$root/../out-6.12-ram-probe"}}
-boot_out=${WAYNE_RAM_PROBE_BOOT_OUT:-${WAYNE_BOOT_OUT:-"$root/../boot-wayne-6.12-ram-probe"}}
+stage=${WAYNE_RAM_PROBE_STAGE:-core}
+case "$stage" in
+    core) name=ram-probe; defconfig=wayne_ram_probe_defconfig ;;
+    scm) name=ram-scm; defconfig=wayne_ram_scm_defconfig ;;
+    *) echo "Unknown RAM probe stage: $stage" >&2; exit 1 ;;
+esac
+out=${WAYNE_RAM_PROBE_OUT:-${WAYNE_OUT:-"$root/../out-6.12-$name"}}
+boot_out=${WAYNE_RAM_PROBE_BOOT_OUT:-${WAYNE_BOOT_OUT:-"$root/../boot-wayne-6.12-$name"}}
 mode=${1:-image}
 jobs=${JOBS:-24}
 export PATH="/usr/lib/llvm-18/bin:$PATH"
@@ -16,11 +22,11 @@ boot_out=$(realpath -m "$boot_out")
 [[ $out != "$boot_out" ]] || { echo 'The RAM probe build and boot outputs must be distinct.' >&2; exit 1; }
 args=(-C "$root" O="$out" ARCH=arm64 LLVM=1 LLVM_IAS=1 CROSS_COMPILE=aarch64-linux-gnu-)
 if [[ $mode == config || ! -f $out/.config ]]; then
-    make "${args[@]}" wayne_ram_probe_defconfig
+    make "${args[@]}" "$defconfig"
 fi
 make "${args[@]}" olddefconfig
 python3 "$root/tools/wayne/check-config.py" "$out/.config" \
-    "$root/arch/arm64/configs/wayne-ram-probe.fragment"
+    "$root/arch/arm64/configs/wayne-$name.fragment"
 [[ $mode != config ]] || exit 0
 make "${args[@]}" -j"$jobs" qcom/sdm660-xiaomi-wayne.dtb
 python3 "$root/tools/wayne/inspect-dtb.py" \

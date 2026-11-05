@@ -15,3 +15,31 @@ Build on Linux with Clang/LLD 18 and AArch64 GCC static libc:
 The default output directory is separate from the ordinary profile. The built-in cpio input path is relative to the build directory. The new profile uses maxcpus=1 and a framebuffer console; its diagnostic init asks for a reboot after 90 seconds only if PID 1 is reached. A charger-screen transition alone does not prove that timer ran.
 
 Validation status is recorded separately from implementation: compilation, image/header validation and QEMU are prerequisites for a temporary physical fastboot boot trial, not evidence of Android support. Never flash this experiment based on these checks alone.
+
+## Physical validation, 2026-11-05
+
+The RAM-core image built from commit 03b81c279504795ea180e4f58dafefe8883e52c1
+(SHA-256 d80632d90b36e136a70d49ca65c95b3eb05ca0b05c958513c06babb5d87909a4,
+padded to 64 MiB) reached standalone PID 1 on the physical Mi 6X. The screen
+showed BRINGUP_READY and a PID 1 heartbeat at approximately 32 seconds.
+After the phone returned to its original Android system, pstore contained the
+6.12 RAM-probe version, WAYNE_INIT_STARTED pid=1 and REBOOTING_AFTER_TEST at
+about 92 seconds. Some pstore bytes were corrupted; the framebuffer photo
+independently confirms the readiness marker. Boot and recovery were not flashed.
+This establishes RAM-only userspace, not Android, eMMC, radio or USB support.
+
+## SCM isolation stage
+
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=scm tools/wayne/build-ram-probe.sh boot
+
+The SCM stage uses separate out-6.12-ram-scm outputs. It enables the generic
+Qualcomm pinctrl core to select the otherwise hidden QCOM_SCM option, together
+with its generic TrustZone memory allocator dependencies. No SoC-specific pin
+controller driver (including SDM660) is selected, so the TLMM hardware probe
+remains absent. The generic pinctrl core alone has no platform-driver binding.
+All other RAM-profile requirements remain checked. The initial SCM-stage
+configuration contains 140 requested requirements. It keeps the identical board
+DTB and diagnostic initramfs and the same one-CPU, framebuffer-only command line.
+
+SCM-stage physical validation is pending; the RAM-core result above must not
+be read as proof that SCM or any additional peripheral works.
