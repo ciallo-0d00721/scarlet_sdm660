@@ -1165,6 +1165,7 @@ struct dwc3_scratchpad_array {
  *		       glue driver.
  */
 struct dwc3 {
+	bool			gadget_connected_once;
 	struct work_struct	drd_work;
 	struct dwc3_trb		*ep0_trb;
 	void			*bounce;

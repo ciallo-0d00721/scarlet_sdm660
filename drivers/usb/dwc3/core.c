@@ -45,6 +45,10 @@ static bool wayne_dma32;
 module_param(wayne_dma32, bool, 0);
 MODULE_PARM_DESC(wayne_dma32, "Limit DWC3 DMA to 32 bits on Xiaomi Wayne");
 
+static bool wayne_no_clock_gating;
+module_param(wayne_no_clock_gating, bool, 0);
+MODULE_PARM_DESC(wayne_no_clock_gating, "Keep the DWC3 core clock active on Xiaomi Wayne");
+
 #define DWC3_DEFAULT_AUTOSUSPEND_DELAY	5000 /* ms */
 
 /**
@@ -1077,6 +1081,11 @@ static void dwc3_core_setup_global_control(struct dwc3 *dwc)
 	 */
 	if (DWC3_VER_IS_PRIOR(DWC3, 190A))
 		reg |= DWC3_GCTL_U2RSTECN;
+
+	if (wayne_no_clock_gating && of_machine_is_compatible("xiaomi,wayne")) {
+		reg |= DWC3_GCTL_DSBLCLKGTNG;
+		dev_info(dwc->dev, "WAYNE_USB core clock gating disabled\n");
+	}
 
 	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
 }

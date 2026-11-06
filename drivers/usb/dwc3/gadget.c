@@ -37,6 +37,10 @@ static bool wayne_mask_events;
 module_param(wayne_mask_events, bool, 0);
 MODULE_PARM_DESC(wayne_mask_events, "Mask peripheral event interrupts on Xiaomi Wayne");
 
+static bool wayne_skip_first_reset;
+module_param(wayne_skip_first_reset, bool, 0);
+MODULE_PARM_DESC(wayne_skip_first_reset, "Skip only the first peripheral connect reset on Wayne");
+
 static bool dwc3_wayne_trace(void)
 {
 	return wayne_trace && of_machine_is_compatible("xiaomi,wayne");
@@ -2715,13 +2719,18 @@ static int dwc3_gadget_soft_connect(struct dwc3 *dwc)
 	 * device-initiated disconnect requires a core soft reset
 	 * (DCTL.CSftRst) before enabling the run/stop bit.
 	 */
-	if (dwc3_wayne_trace())
-		dev_info(dwc->dev, "WAYNE_USB soft reset start\n");
-	ret = dwc3_core_soft_reset(dwc);
-	if (dwc3_wayne_trace())
-		dev_info(dwc->dev, "WAYNE_USB soft reset ret=%d\n", ret);
-	if (ret)
-		return ret;
+	if (wayne_skip_first_reset && !dwc->gadget_connected_once &&
+	    of_machine_is_compatible("xiaomi,wayne")) {
+		dev_info(dwc->dev, "WAYNE_USB skipping first connect reset\n");
+	} else {
+		if (dwc3_wayne_trace())
+			dev_info(dwc->dev, "WAYNE_USB soft reset start\n");
+		ret = dwc3_core_soft_reset(dwc);
+		if (dwc3_wayne_trace())
+			dev_info(dwc->dev, "WAYNE_USB soft reset ret=%d\n", ret);
+		if (ret)
+			return ret;
+	}
 
 	dwc3_event_buffers_setup(dwc);
 	if (wayne_mask_events && dwc->ev_buf &&
@@ -2738,6 +2747,8 @@ static int dwc3_gadget_soft_connect(struct dwc3 *dwc)
 	if (dwc3_wayne_trace())
 		dev_info(dwc->dev, "WAYNE_USB EP0 start ret=%d\n", ret);
 	ret = dwc3_gadget_run_stop(dwc, true);
+	if (!ret)
+		dwc->gadget_connected_once = true;
 	if (dwc3_wayne_trace())
 		dev_info(dwc->dev, "WAYNE_USB run-stop ret=%d\n", ret);
 	return ret;
