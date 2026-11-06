@@ -76,6 +76,8 @@ USB_GUARD_PROFILES = {
         " g_serial.enable=0 wayne.usb_deferred=1",
     "ram-usb2-guard-connect-trace": USB_GUARD_BASE +
         " g_serial.enable=0 wayne.usb_deferred=1 dwc3.wayne_trace=1",
+    "ram-usb2-guard-mask-events": USB_GUARD_BASE +
+        " g_serial.enable=0 wayne.usb_deferred=1 dwc3.wayne_trace=1 dwc3.wayne_mask_events=1",
     "ram-usb2-guard-bind-only": USB_GUARD_BASE +
         " g_serial.enable=0 wayne.usb_deferred=1 g_serial.bind_only=1",
     "ram-usb2-guard-nodwc3": BOOTGUARD_CMDLINE +

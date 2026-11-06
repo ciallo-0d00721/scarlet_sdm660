@@ -33,6 +33,10 @@ static bool wayne_trace;
 module_param(wayne_trace, bool, 0);
 MODULE_PARM_DESC(wayne_trace, "Trace early DWC3 peripheral connection on Xiaomi Wayne");
 
+static bool wayne_mask_events;
+module_param(wayne_mask_events, bool, 0);
+MODULE_PARM_DESC(wayne_mask_events, "Mask peripheral event interrupts on Xiaomi Wayne");
+
 static bool dwc3_wayne_trace(void)
 {
 	return wayne_trace && of_machine_is_compatible("xiaomi,wayne");
@@ -2720,6 +2724,13 @@ static int dwc3_gadget_soft_connect(struct dwc3 *dwc)
 		return ret;
 
 	dwc3_event_buffers_setup(dwc);
+	if (wayne_mask_events && dwc->ev_buf &&
+	    of_machine_is_compatible("xiaomi,wayne")) {
+		dwc3_writel(dwc->regs, DWC3_GEVNTSIZ(0),
+			    DWC3_GEVNTSIZ_INTMASK |
+			    DWC3_GEVNTSIZ_SIZE(dwc->ev_buf->length));
+		dev_info(dwc->dev, "WAYNE_USB event interrupt masked\n");
+	}
 	if (dwc3_wayne_trace() && dwc->ev_buf)
 		dev_info(dwc->dev, "WAYNE_USB event DMA=%pad length=%u mask=%#llx\n",
 			 &dwc->ev_buf->dma, dwc->ev_buf->length, dwc->sysdev->coherent_dma_mask);
