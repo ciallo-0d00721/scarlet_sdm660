@@ -166,3 +166,17 @@ gadget enable, and enumeration of 0525:a4a7 as ttyACM0 only after the
 attempt. Keep the QEMU artifacts separate from phone images. The
 loopback exercises the generic gadget and host stack. Qualcomm DWC3
 and QUSB2 PHY behavior still requires board testing.
+
+
+With the delayed profile, Wayne returned to Fastboot after about
+22 seconds with no CDC ACM device observed, compared with about 9
+seconds on the immediate-enable control. The stock OS booted after a
+plain Fastboot reboot and exposed an empty pstore. The timing places
+the failure near enable but leaves the failing operation unknown.
+
+The deferred init now reads the UDC function and link state around
+the enable request. The `usb2guardbindonly` profile adds
+`g_serial.bind_only=1` to the deferred profile. It uses composite
+function deactivation to hold off host connection while the UDC
+binds the gadget. This separates binding from the pull-up and host
+enumeration. It is a bring-up diagnostic.

@@ -31,6 +31,8 @@ case "$stage" in
         boot_profile=ram-usb2-guard-no-usb-console ;;
     usb2guarddeferred) name=ram-usb2-guard; defconfig=wayne_ram_usb2_guard_defconfig
         boot_profile=ram-usb2-guard-deferred ;;
+    usb2guardbindonly) name=ram-usb2-guard; defconfig=wayne_ram_usb2_guard_defconfig
+        boot_profile=ram-usb2-guard-bind-only ;;
     usb2guardfull) name=ram-usb2-guard; defconfig=wayne_ram_usb2_guard_defconfig
         boot_profile=ram-usb2-guard-full ;;
     usb2guardwrapper) name=ram-usb2-guard; defconfig=wayne_ram_usb2_guard_defconfig

@@ -156,12 +156,20 @@ def smoke(args):
     if args.expect_usb_acm:
         before, start, after = text.partition('wayne-init: USB_DEFERRED_START')
         device = 'New USB device found, idVendor=0525, idProduct=a4a7'
+        request_accepted = 'USB_DEFERRED_RESULT request_accepted' in after
         usb_acm = {
-            'dummy_udc_available_before_enable': '/sys/class/udc/dummy_udc.0' in before,
+            'dummy_udc_available_before_enable': (
+                'USB_UDC_STATE before udc=dummy_udc.0 function=<empty>' in before
+                if request_accepted else '/sys/class/udc/dummy_udc.0' in before),
             'no_acm_before_enable': device not in before and 'ttyACM0: USB ACM device' not in before,
-            'enable_succeeded': bool(start) and 'USB_DEFERRED_RESULT enabled' in after,
+            'enable_succeeded': bool(start) and (
+                request_accepted or 'USB_DEFERRED_RESULT enabled' in after),
             'acm_enumerated_after_enable': device in after and 'ttyACM0: USB ACM device' in after,
         }
+        if request_accepted:
+            usb_acm['udc_configured_after_enable'] = (
+                'USB_UDC_STATE settled udc=dummy_udc.0 function=g_serial state=configured'
+                in after)
         report['usb_acm'] = usb_acm
         report['scope'] += '; CDC ACM loopback via Linux dummy_hcd'
         passed = passed and all(usb_acm.values())

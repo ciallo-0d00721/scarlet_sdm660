@@ -139,12 +139,85 @@ static int command_has(const char *needle)
     return found;
 }
 
+static void udc_attribute(const char *udc, const char *attribute,
+                          char *value, size_t size)
+{
+    char path[512];
+    size_t length;
+    FILE *file;
+
+    value[0] = '\0';
+    if (snprintf(path, sizeof(path), "/sys/class/udc/%s/%s", udc, attribute)
+        >= (int)sizeof(path)) {
+        snprintf(value, size, "<path-too-long>");
+        return;
+    }
+    file = fopen(path, "r");
+    if (!file) {
+        if (errno == ENOENT)
+            snprintf(value, size, "<missing>");
+        else
+            snprintf(value, size, "<unreadable: %s>", strerror(errno));
+        return;
+    }
+    if (fgets(value, size, file)) {
+        length = strlen(value);
+        while (length && (value[length - 1] == '\n' || value[length - 1] == '\r'))
+            value[--length] = '\0';
+        if (!value[0])
+            snprintf(value, size, "<empty>");
+    } else if (ferror(file)) {
+        snprintf(value, size, "<unreadable: %s>", strerror(errno));
+    } else {
+        snprintf(value, size, "<empty>");
+    }
+    fclose(file);
+}
+
+static void log_udc_state(const char *phase)
+{
+    DIR *dir = opendir("/sys/class/udc");
+    struct dirent *entry;
+    char function[128], state[128];
+    unsigned int count = 0;
+    int error;
+
+    if (!dir) {
+        if (errno == ENOENT)
+            log_message("USB_UDC_STATE %s class=<missing>", phase);
+        else
+            log_message("USB_UDC_STATE %s class=<unreadable: %s>", phase,
+                        strerror(errno));
+        return;
+    }
+    for (;;) {
+        errno = 0;
+        entry = readdir(dir);
+        if (!entry)
+            break;
+        if (entry->d_name[0] == '.')
+            continue;
+        udc_attribute(entry->d_name, "function", function, sizeof(function));
+        udc_attribute(entry->d_name, "state", state, sizeof(state));
+        log_message("USB_UDC_STATE %s udc=%s function=%s state=%s",
+                    phase, entry->d_name, function, state);
+        count++;
+    }
+    error = errno;
+    closedir(dir);
+    if (error)
+        log_message("USB_UDC_STATE %s class=<unreadable: %s>", phase,
+                    strerror(error));
+    else if (!count)
+        log_message("USB_UDC_STATE %s class=<empty>", phase);
+}
+
 static void enable_usb_gadget(void)
 {
     int fd, saved_errno;
     ssize_t written;
 
-    list_directory("/sys/class/udc");
+    log_udc_state("before");
     log_message("USB_DEFERRED_START");
     fd = open("/sys/module/g_serial/parameters/enable", O_WRONLY | O_CLOEXEC);
     if (fd < 0) {
@@ -154,12 +227,14 @@ static void enable_usb_gadget(void)
     written = write(fd, "1\n", 2);
     saved_errno = errno;
     close(fd);
-    if (written == 2)
-        log_message("USB_DEFERRED_RESULT enabled");
-    else if (written < 0)
+    if (written == 2) {
+        log_message("USB_DEFERRED_RESULT request_accepted");
+        log_udc_state("after");
+    } else if (written < 0) {
         log_message("USB_DEFERRED_RESULT write failed: %s", strerror(saved_errno));
-    else
+    } else {
         log_message("USB_DEFERRED_RESULT short write: %zd", written);
+    }
 }
 
 static int reboot_to_bootloader(void)
@@ -275,6 +350,7 @@ int main(int argc, char **argv)
     struct utsname name = {0};
     unsigned long heartbeat = 0;
     unsigned long elapsed = 0;
+    unsigned long usb_state_due = 0;
     unsigned int reboot_after;
     int bootloader_target;
     int test_pid1_exit;
@@ -338,7 +414,7 @@ int main(int argc, char **argv)
     if (reboot_after)
         log_message("AUTO_REBOOT_AFTER=%u seconds", reboot_after);
     for (;;) {
-        unsigned int step = reboot_after ? 1 : 30;
+        unsigned int step = reboot_after || deferred_usb || usb_state_due ? 1 : 30;
         struct timespec delay = {step, 0};
         while (nanosleep(&delay, &delay) && errno == EINTR) {}
         elapsed += step;
@@ -353,6 +429,11 @@ int main(int argc, char **argv)
         if (deferred_usb && elapsed >= 10) {
             deferred_usb = 0;
             enable_usb_gadget();
+            usb_state_due = elapsed + 5;
+        }
+        if (usb_state_due && elapsed >= usb_state_due) {
+            usb_state_due = 0;
+            log_udc_state("settled");
         }
         if (reboot_after && elapsed >= reboot_after) {
             log_message("REBOOTING_AFTER_TEST");

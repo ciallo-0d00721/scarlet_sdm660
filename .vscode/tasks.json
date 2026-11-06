@@ -98,6 +98,7 @@
         "usb2guardfull",
         "usb2guardnousbconsole",
         "usb2guarddeferred",
+        "usb2guardbindonly",
         "bootguard",
         "bootguardwdt",
         "bootguardpanic",

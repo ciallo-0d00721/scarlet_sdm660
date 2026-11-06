@@ -98,6 +98,10 @@ static unsigned n_ports = 1;
 module_param(n_ports, uint, 0);
 MODULE_PARM_DESC(n_ports, "number of ports to create, default=1");
 
+static bool bind_only;
+module_param(bind_only, bool, 0);
+MODULE_PARM_DESC(bind_only, "Bind the serial gadget while holding off host connection");
+
 static bool enable = true;
 
 static int switch_gserial_enable(bool do_enable);
@@ -167,6 +171,16 @@ static int serial_register_ports(struct usb_composite_dev *cdev,
 		ret = usb_add_function(c, f_serial[i]);
 		if (ret)
 			goto err_add_func;
+
+		if (bind_only && !i) {
+			ret = usb_function_deactivate(f_serial[i]);
+			if (ret) {
+				usb_remove_function(c, f_serial[i]);
+				goto err_add_func;
+			}
+			/* Balance deactivation when usb_remove_function() runs. */
+			f_serial[i]->bind_deactivated = true;
+		}
 	}
 
 	return 0;
