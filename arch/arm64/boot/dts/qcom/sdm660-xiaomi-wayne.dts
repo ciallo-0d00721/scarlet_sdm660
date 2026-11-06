@@ -208,6 +208,9 @@
 };
 
 &usb3 {
+	interconnects = <&a2noc MASTER_USB3 &bimc SLAVE_EBI>,
+			<&cnoc MASTER_SNOC_CNOC &cnoc SLAVE_USB3_0>;
+	interconnect-names = "usb-ddr", "apps-usb";
 	qcom,select-utmi-as-pipe-clk;
 	status = "okay";
 };
