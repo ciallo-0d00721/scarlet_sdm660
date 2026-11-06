@@ -142,3 +142,27 @@ the diagnostic init reports readiness, logs the UDC list and attempts
 to enable CDC ACM. This separates the runtime enable from early boot
 and leaves the Fastboot deadline armed. QEMU checks that the init
 reaches and returns from the enable attempt.
+
+### Offline CDC ACM loopback
+
+The standard QEMU check has no USB device controller. To check the
+actual deferred enable and host enumeration, make a separate
+QEMU-only build with `USB_DUMMY_HCD`, `USB_ACM`, and
+`USB_ANNOUNCE_NEW_DEVICES` enabled:
+
+    out=../out-6.12-qemu-only-usb-loopback
+    boot=../qemu-only-boot-usb-loopback
+    mkdir -p "$out"
+    cp ../out-6.12-ram-usb2-guard/.config "$out/.config"
+    scripts/config --file "$out/.config" -e USB_DUMMY_HCD -e USB_ACM -e USB_ANNOUNCE_NEW_DEVICES
+    JOBS=24 WAYNE_RAM_PROBE_STAGE=usb2guarddeferred WAYNE_RAM_PROBE_OUT="$out" \
+      WAYNE_RAM_PROBE_BOOT_OUT="$boot" tools/wayne/build-ram-probe.sh boot
+    python3 tools/wayne/qemu-boot-smoke.py --boot-out "$boot" --output-dir "$boot/qemu" \
+      --expected-source "$(git rev-parse HEAD)" --expected-profile ram-usb2-guard-deferred \
+      --expect-usb-acm
+
+The test requires the dummy UDC before the enable attempt, successful
+gadget enable, and enumeration of 0525:a4a7 as ttyACM0 only after the
+attempt. Keep the QEMU artifacts separate from phone images. The
+loopback exercises the generic gadget and host stack. Qualcomm DWC3
+and QUSB2 PHY behavior still requires board testing.

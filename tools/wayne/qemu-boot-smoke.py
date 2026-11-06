@@ -64,6 +64,9 @@ def verified_payload(boot, expected_source, expected_profile, packer):
 
 
 def smoke(args):
+    if args.expect_usb_acm and (args.verify_only or args.expect != 'timer' or
+                                args.expected_profile != 'ram-usb2-guard-deferred'):
+        raise ValueError('--expect-usb-acm requires a deferred USB timer boot')
     boot, output = args.boot_out.resolve(), args.output_dir.resolve()
     if boot == output:
         raise ValueError('Use a separate directory for QEMU outputs')
@@ -149,8 +152,21 @@ def smoke(args):
         required += ['USB_DEFERRED_START', 'USB_DEFERRED_RESULT']
     markers = {key: key in text for key in required}
     confirmed = {name: ('initcall ' + name + ' blacklisted') in text for name in blacklists}
+    passed = code == 0 and all(markers.values()) and all(confirmed.values())
+    if args.expect_usb_acm:
+        before, start, after = text.partition('wayne-init: USB_DEFERRED_START')
+        device = 'New USB device found, idVendor=0525, idProduct=a4a7'
+        usb_acm = {
+            'dummy_udc_available_before_enable': '/sys/class/udc/dummy_udc.0' in before,
+            'no_acm_before_enable': device not in before and 'ttyACM0: USB ACM device' not in before,
+            'enable_succeeded': bool(start) and 'USB_DEFERRED_RESULT enabled' in after,
+            'acm_enumerated_after_enable': device in after and 'ttyACM0: USB ACM device' in after,
+        }
+        report['usb_acm'] = usb_acm
+        report['scope'] += '; CDC ACM loopback via Linux dummy_hcd'
+        passed = passed and all(usb_acm.values())
     report.update({'exit_code': code, 'markers': markers, 'blacklists': confirmed,
-                   'passed': code == 0 and all(markers.values()) and all(confirmed.values())})
+                   'passed': passed})
     (output / 'qemu-smoke.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))
     return 0 if report['passed'] else 1
@@ -166,4 +182,6 @@ if __name__ == '__main__':
                         default=pathlib.Path(__file__).resolve().with_name('make-boot.py'))
     parser.add_argument('--verify-only', action='store_true')
     parser.add_argument('--expect', choices=('timer', 'panic'), default='timer')
+    parser.add_argument('--expect-usb-acm', action='store_true',
+                        help='Require deferred CDC ACM enumeration on a dummy_hcd build')
     raise SystemExit(smoke(parser.parse_args()))
