@@ -46,14 +46,14 @@ properties:
     items:
       - description: phy config clock
       - description: 19.2 MHz ref clk
-      - description: phy interface clock (Optional)
+      - description: Optional PHY interface clock or upstream reference source
 
   clock-names:
     minItems: 2
     items:
       - const: cfg_ahb
       - const: ref
-      - const: iface
+      - enum: [iface, ref_src]
 
   vdd-supply:
     description:
@@ -164,6 +164,21 @@ required:
   - resets
 
 allOf:
+  - if:
+      not:
+        properties:
+          compatible:
+            contains:
+              const: qcom,sdm660-qusb2-phy
+    then:
+      properties:
+        clock-names:
+          minItems: 2
+          items:
+            - const: cfg_ahb
+            - const: ref
+            - const: iface
+
   - if:
       not:
         properties:

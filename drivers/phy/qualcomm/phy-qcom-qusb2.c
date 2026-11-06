@@ -411,7 +411,7 @@ struct override_params {
  *
  * @cfg_ahb_clk: AHB2PHY interface clock
  * @ref_clk: phy reference clock
- * @iface_clk: phy interface clock
+ * @auxiliary_clks: optional reference source and PHY interface clocks
  * @phy_reset: phy reset control
  * @vregs: regulator supplies bulk data
  *
@@ -431,7 +431,7 @@ struct qusb2_phy {
 
 	struct clk *cfg_ahb_clk;
 	struct clk *ref_clk;
-	struct clk *iface_clk;
+	struct clk_bulk_data auxiliary_clks[2];
 	struct reset_control *phy_reset;
 	struct regulator_bulk_data vregs[QUSB2_NUM_VREGS];
 
@@ -665,7 +665,7 @@ static int __maybe_unused qusb2_phy_runtime_suspend(struct device *dev)
 		clk_disable_unprepare(qphy->ref_clk);
 
 	clk_disable_unprepare(qphy->cfg_ahb_clk);
-	clk_disable_unprepare(qphy->iface_clk);
+	clk_bulk_disable_unprepare(ARRAY_SIZE(qphy->auxiliary_clks), qphy->auxiliary_clks);
 
 	return 0;
 }
@@ -683,16 +683,17 @@ static int __maybe_unused qusb2_phy_runtime_resume(struct device *dev)
 		return 0;
 	}
 
-	ret = clk_prepare_enable(qphy->iface_clk);
+	ret = clk_bulk_prepare_enable(ARRAY_SIZE(qphy->auxiliary_clks),
+				      qphy->auxiliary_clks);
 	if (ret) {
-		dev_err(dev, "failed to enable iface_clk, %d\n", ret);
+		dev_err(dev, "failed to enable auxiliary clocks, %d\n", ret);
 		return ret;
 	}
 
 	ret = clk_prepare_enable(qphy->cfg_ahb_clk);
 	if (ret) {
 		dev_err(dev, "failed to enable cfg ahb clock, %d\n", ret);
-		goto disable_iface_clk;
+		goto disable_auxiliary_clks;
 	}
 
 	if (!qphy->has_se_clk_scheme) {
@@ -716,8 +717,8 @@ static int __maybe_unused qusb2_phy_runtime_resume(struct device *dev)
 
 disable_ahb_clk:
 	clk_disable_unprepare(qphy->cfg_ahb_clk);
-disable_iface_clk:
-	clk_disable_unprepare(qphy->iface_clk);
+disable_auxiliary_clks:
+	clk_bulk_disable_unprepare(ARRAY_SIZE(qphy->auxiliary_clks), qphy->auxiliary_clks);
 
 	return ret;
 }
@@ -737,9 +738,10 @@ static int qusb2_phy_init(struct phy *phy)
 	if (ret)
 		return ret;
 
-	ret = clk_prepare_enable(qphy->iface_clk);
+	ret = clk_bulk_prepare_enable(ARRAY_SIZE(qphy->auxiliary_clks),
+				      qphy->auxiliary_clks);
 	if (ret) {
-		dev_err(&phy->dev, "failed to enable iface_clk, %d\n", ret);
+		dev_err(&phy->dev, "failed to enable auxiliary clocks, %d\n", ret);
 		goto poweroff_phy;
 	}
 
@@ -747,7 +749,7 @@ static int qusb2_phy_init(struct phy *phy)
 	ret = clk_prepare_enable(qphy->cfg_ahb_clk);
 	if (ret) {
 		dev_err(&phy->dev, "failed to enable cfg ahb clock, %d\n", ret);
-		goto disable_iface_clk;
+		goto disable_auxiliary_clks;
 	}
 
 	/* Perform phy reset */
@@ -865,8 +867,8 @@ assert_phy_reset:
 	reset_control_assert(qphy->phy_reset);
 disable_ahb_clk:
 	clk_disable_unprepare(qphy->cfg_ahb_clk);
-disable_iface_clk:
-	clk_disable_unprepare(qphy->iface_clk);
+disable_auxiliary_clks:
+	clk_bulk_disable_unprepare(ARRAY_SIZE(qphy->auxiliary_clks), qphy->auxiliary_clks);
 poweroff_phy:
 	regulator_bulk_disable(ARRAY_SIZE(qphy->vregs), qphy->vregs);
 
@@ -887,7 +889,7 @@ static int qusb2_phy_exit(struct phy *phy)
 	reset_control_assert(qphy->phy_reset);
 
 	clk_disable_unprepare(qphy->cfg_ahb_clk);
-	clk_disable_unprepare(qphy->iface_clk);
+	clk_bulk_disable_unprepare(ARRAY_SIZE(qphy->auxiliary_clks), qphy->auxiliary_clks);
 
 	regulator_bulk_disable(ARRAY_SIZE(qphy->vregs), qphy->vregs);
 
@@ -984,9 +986,12 @@ static int qusb2_phy_probe(struct platform_device *pdev)
 		return dev_err_probe(dev, PTR_ERR(qphy->ref_clk),
 				     "failed to get ref clk\n");
 
-	qphy->iface_clk = devm_clk_get_optional(dev, "iface");
-	if (IS_ERR(qphy->iface_clk))
-		return PTR_ERR(qphy->iface_clk);
+	qphy->auxiliary_clks[0].id = "ref_src";
+	qphy->auxiliary_clks[1].id = "iface";
+	ret = devm_clk_bulk_get_optional(dev, ARRAY_SIZE(qphy->auxiliary_clks),
+					qphy->auxiliary_clks);
+	if (ret)
+		return dev_err_probe(dev, ret, "failed to get auxiliary clocks\n");
 
 	qphy->phy_reset = devm_reset_control_get_by_index(&pdev->dev, 0);
 	if (IS_ERR(qphy->phy_reset)) {

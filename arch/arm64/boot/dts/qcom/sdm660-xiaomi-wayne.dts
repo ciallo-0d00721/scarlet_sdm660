@@ -200,6 +200,10 @@
 };
 
 &qusb2phy0 {
+	clocks = <&gcc GCC_USB_PHY_CFG_AHB2PHY_CLK>,
+		 <&gcc GCC_RX0_USB2_CLKREF_CLK>,
+		 <&rpmcc RPM_SMD_LN_BB_CLK>;
+	clock-names = "cfg_ahb", "ref", "ref_src";
 	status = "okay";
 
 	vdd-supply = <&vreg_l1b_0p925>;
