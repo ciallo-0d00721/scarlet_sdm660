@@ -1,10 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
-/* Standalone bring-up PID 1: RAM filesystems and diagnostic logging only. */
+/* Standalone bring-up PID 1 with opt-in hardware diagnostics. */
 #define _GNU_SOURCE
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/reboot.h>
+#include <poll.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -137,6 +139,241 @@ static int command_has(const char *needle)
     }
     fclose(file);
     return found;
+}
+
+#define CACHE_BLOCK "/dev/mmcblk1p60"
+#define CACHE_MOUNT "/run/wayne-cache"
+#define CACHE_LIMIT (2U * 1024 * 1024)
+
+static pid_t cache_pid;
+static int cache_pipe = -1;
+static volatile sig_atomic_t cache_stop;
+
+static int cache_path_matches(const char *path, int delimiter, const char *expected)
+{
+    char *line = NULL;
+    size_t capacity = 0;
+    size_t length = strlen(expected) + 1;
+    int matched = 0;
+    ssize_t got;
+    FILE *file = fopen(path, "r");
+
+    if (!file)
+        return 0;
+    while ((got = getdelim(&line, &capacity, delimiter, file)) >= 0) {
+        if (got == (ssize_t)length && !memcmp(line, expected, length - 1) &&
+            line[length - 1] == delimiter) {
+            matched = 1;
+            break;
+        }
+    }
+    free(line);
+    fclose(file);
+    return matched;
+}
+
+static int cache_target_valid(void)
+{
+    const char *uevent = "/sys/class/block/mmcblk1p60/uevent";
+    struct stat st;
+
+    return cache_path_matches("/sys/firmware/devicetree/base/compatible", 0, "xiaomi,wayne") &&
+           cache_path_matches(uevent, '\n', "PARTNAME=cache") &&
+           cache_path_matches(uevent, '\n', "PARTN=60") &&
+           cache_path_matches("/sys/class/block/mmcblk1/device/type", '\n', "MMC") &&
+           cache_path_matches("/sys/class/block/mmcblk1/removable", '\n', "0") &&
+           !lstat(CACHE_BLOCK, &st) && S_ISBLK(st.st_mode);
+}
+
+static void cache_stop_handler(int signo)
+{
+    (void)signo;
+    cache_stop = 1;
+}
+
+static int cache_write(int file, const char *data, size_t len, size_t *total)
+{
+    if (len > CACHE_LIMIT - *total) {
+        errno = EFBIG;
+        return -1;
+    }
+    while (len) {
+        ssize_t count = write(file, data, len);
+
+        if (count < 0 && errno == EINTR)
+            continue;
+        if (count <= 0) {
+            if (!count)
+                errno = EIO;
+            return -1;
+        }
+        data += count;
+        len -= count;
+        *total += count;
+    }
+    return 0;
+}
+
+static int cache_drain(int input, int file, size_t *total)
+{
+    char record[16384];
+    size_t start = *total;
+    int pending = 1, saved_errno;
+
+    for (unsigned int i = 0; i < 128; i++) {
+        ssize_t count = read(input, record, sizeof(record));
+
+        if (count < 0 && (errno == EINTR || errno == EPIPE))
+            continue;
+        if (count < 0 && errno == EAGAIN) {
+            pending = 0;
+            break;
+        }
+        if (count <= 0 || cache_write(file, record, count, total)) {
+            if (!count)
+                errno = EIO;
+            pending = -1;
+            break;
+        }
+    }
+    saved_errno = errno;
+    if (*total != start && fdatasync(file))
+        return -1;
+    errno = saved_errno;
+    return pending;
+}
+
+static void cache_logger(int ready)
+{
+    static const char marker[] = "CACHE_KMSG_READY\n";
+    struct sigaction action = {.sa_handler = cache_stop_handler};
+    struct pollfd input = {.fd = -1, .events = POLLIN};
+    size_t total = 0;
+    int dir = -1, file = -1, result, status = 1;
+    const char *phase = "mount";
+
+    sigemptyset(&action.sa_mask);
+    if (sigaction(SIGTERM, &action, NULL))
+        goto failed;
+    if (mkdir(CACHE_MOUNT, 0700) ||
+        mount(CACHE_BLOCK, CACHE_MOUNT, "ext4", MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_NOATIME,
+              "errors=remount-ro"))
+        goto failed;
+    phase = "open";
+    dir = open(CACHE_MOUNT, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (dir < 0)
+        goto unmount_failed;
+    file = openat(dir, "wayne-bringup-kmsg.log",
+                  O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
+    if (file < 0)
+        goto unmount_failed;
+    input.fd = open("/dev/kmsg", O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+    if (input.fd < 0)
+        goto unmount_failed;
+
+    phase = "sync";
+    do {
+        result = cache_drain(input.fd, file, &total);
+    } while (result > 0 && !cache_stop);
+    if (cache_stop)
+        goto unmount;
+    if (result < 0 || cache_write(file, marker, sizeof(marker) - 1, &total) ||
+        fdatasync(file) || fsync(dir) || write(ready, "1", 1) != 1)
+        goto unmount_failed;
+    close(ready);
+    ready = -1;
+    phase = "stream";
+    while (!cache_stop) {
+        result = poll(&input, 1, 100);
+        if (!result || (result < 0 && errno == EINTR))
+            continue;
+        if (result < 0)
+            goto unmount_failed;
+        if (input.revents & (POLLHUP | POLLNVAL)) {
+            errno = EIO;
+            goto unmount_failed;
+        }
+        if (cache_drain(input.fd, file, &total) < 0)
+            goto unmount_failed;
+    }
+    if (cache_drain(input.fd, file, &total) < 0)
+        goto unmount_failed;
+    status = 0;
+    goto unmount;
+unmount_failed:
+    log_message("CACHE_KMSG_FAILED phase=%s: %s", phase, strerror(errno));
+unmount:
+    if (file >= 0)
+        close(file);
+    if (dir >= 0)
+        close(dir);
+    if (input.fd >= 0)
+        close(input.fd);
+    if (umount(CACHE_MOUNT))
+        log_message("CACHE_KMSG_UNMOUNT_FAILED: %s", strerror(errno));
+    else
+        log_message("CACHE_KMSG_UNMOUNTED");
+    _exit(status);
+failed:
+    log_message("CACHE_KMSG_FAILED phase=%s: %s", phase, strerror(errno));
+    _exit(1);
+}
+
+static void cache_start(void)
+{
+    int pipefd[2];
+
+    if (!cache_target_valid()) {
+        log_message("CACHE_KMSG_REJECTED board or cache device did not match");
+        return;
+    }
+    if (pipe2(pipefd, O_CLOEXEC | O_NONBLOCK)) {
+        log_message("CACHE_KMSG_PIPE_FAILED: %s", strerror(errno));
+        return;
+    }
+    cache_pid = fork();
+    if (!cache_pid) {
+        close(pipefd[0]);
+        cache_logger(pipefd[1]);
+    }
+    close(pipefd[1]);
+    if (cache_pid < 0) {
+        close(pipefd[0]);
+        log_message("CACHE_KMSG_FORK_FAILED: %s", strerror(errno));
+        return;
+    }
+    cache_pipe = pipefd[0];
+}
+
+static int cache_ready(void)
+{
+    char byte;
+    ssize_t got;
+
+    if (cache_pid <= 0 || cache_pipe < 0)
+        return 0;
+    do {
+        got = read(cache_pipe, &byte, 1);
+    } while (got < 0 && errno == EINTR);
+    return got == 1 && byte == '1';
+}
+
+static void cache_shutdown(void)
+{
+    if (cache_pid > 0) {
+        kill(cache_pid, SIGTERM);
+        for (unsigned int i = 0; i < 50; i++) {
+            if (waitpid(cache_pid, NULL, WNOHANG) == cache_pid) {
+                cache_pid = 0;
+                break;
+            }
+            usleep(20000);
+        }
+        if (cache_pid > 0)
+            kill(cache_pid, SIGKILL);
+    }
+    if (cache_pipe >= 0)
+        close(cache_pipe);
 }
 
 static void udc_attribute(const char *udc, const char *attribute,
@@ -355,6 +592,8 @@ int main(int argc, char **argv)
     int bootloader_target;
     int test_pid1_exit;
     int deferred_usb;
+    int cache_opt_in;
+    pid_t reaped;
     int console;
     if (argc == 2 && !strcmp(argv[1], "--self-test")) {
         if (parse_reboot_argument("wayne.reboot_after=30") != 30 ||
@@ -395,6 +634,7 @@ int main(int argc, char **argv)
     bootloader_target = command_has("wayne.reboot_mode=bootloader");
     test_pid1_exit = command_has("wayne.test_pid1_exit=1");
     deferred_usb = command_has("wayne.usb_deferred=1");
+    cache_opt_in = command_has("wayne.cache_kmsg=1");
     mount_ram_filesystem("sysfs", "/sys");
     directory("/sys/fs/pstore");
     mount_ram_filesystem("pstore", "/sys/fs/pstore");
@@ -410,7 +650,12 @@ int main(int argc, char **argv)
     if (command_has("wayne.mount_system=1"))
         mount_system();
     list_directory("/sys/fs/pstore");
-    log_message("BRINGUP_READY; no disk partitions mounted");
+    if (cache_opt_in) {
+        log_message("BRINGUP_READY; cache logger requested");
+        cache_start();
+    } else {
+        log_message("BRINGUP_READY; no disk partitions mounted");
+    }
     if (reboot_after)
         log_message("AUTO_REBOOT_AFTER=%u seconds", reboot_after);
     for (;;) {
@@ -418,7 +663,10 @@ int main(int argc, char **argv)
         struct timespec delay = {step, 0};
         while (nanosleep(&delay, &delay) && errno == EINTR) {}
         elapsed += step;
-        while (waitpid(-1, NULL, WNOHANG) > 0) {}
+        while ((reaped = waitpid(-1, NULL, WNOHANG)) > 0) {
+            if (reaped == cache_pid)
+                cache_pid = 0;
+        }
         if (!(elapsed % 30))
             log_message("heartbeat=%lu pid=%ld kernel=%s", ++heartbeat,
                         (long)getpid(), name.release);
@@ -428,8 +676,12 @@ int main(int argc, char **argv)
         }
         if (deferred_usb && elapsed >= 10) {
             deferred_usb = 0;
-            enable_usb_gadget();
-            usb_state_due = elapsed + 5;
+            if (!cache_opt_in || cache_ready()) {
+                enable_usb_gadget();
+                usb_state_due = elapsed + 5;
+            } else {
+                log_message("CACHE_KMSG_USB_SKIPPED logger not ready");
+            }
         }
         if (usb_state_due && elapsed >= usb_state_due) {
             usb_state_due = 0;
@@ -437,8 +689,11 @@ int main(int argc, char **argv)
         }
         if (reboot_after && elapsed >= reboot_after) {
             log_message("REBOOTING_AFTER_TEST");
-            if (bootloader_target) {
+            if (bootloader_target)
                 log_message("REBOOT_TARGET=bootloader");
+            if (cache_opt_in)
+                cache_shutdown();
+            if (bootloader_target) {
                 if (reboot_to_bootloader()) {
                     int saved_errno = errno;
 

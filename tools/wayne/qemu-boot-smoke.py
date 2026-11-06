@@ -148,11 +148,17 @@ def smoke(args):
         required += ['AUTO_REBOOT_AFTER=30 seconds', 'REBOOTING_AFTER_TEST']
         if 'wayne.reboot_mode=bootloader' in tokens:
             required.append('REBOOT_TARGET=bootloader')
-    if 'wayne.usb_deferred=1' in tokens:
+    if 'wayne.cache_kmsg=1' in tokens:
+        required += ['CACHE_KMSG_REJECTED', 'CACHE_KMSG_USB_SKIPPED']
+    elif 'wayne.usb_deferred=1' in tokens:
         required += ['USB_DEFERRED_START', 'USB_DEFERRED_RESULT']
     markers = {key: key in text for key in required}
     confirmed = {name: ('initcall ' + name + ' blacklisted') in text for name in blacklists}
     passed = code == 0 and all(markers.values()) and all(confirmed.values())
+    if 'wayne.cache_kmsg=1' in tokens:
+        report['cache_logger_rejected_on_virt'] = (
+            'CACHE_KMSG_READY' not in text and 'USB_DEFERRED_START' not in text)
+        passed = passed and report['cache_logger_rejected_on_virt']
     if args.expect_usb_acm:
         before, start, after = text.partition('wayne-init: USB_DEFERRED_START')
         device = 'New USB device found, idVendor=0525, idProduct=a4a7'
