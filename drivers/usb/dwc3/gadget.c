@@ -18,6 +18,8 @@
 #include <linux/io.h>
 #include <linux/list.h>
 #include <linux/dma-mapping.h>
+#include <linux/moduleparam.h>
+#include <linux/of.h>
 
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
@@ -26,6 +28,15 @@
 #include "core.h"
 #include "gadget.h"
 #include "io.h"
+
+static bool wayne_trace;
+module_param(wayne_trace, bool, 0);
+MODULE_PARM_DESC(wayne_trace, "Trace early DWC3 peripheral connection on Xiaomi Wayne");
+
+static bool dwc3_wayne_trace(void)
+{
+	return wayne_trace && of_machine_is_compatible("xiaomi,wayne");
+}
 
 #define DWC3_ALIGN_FRAME(d, n)	(((d)->frame_number + ((d)->interval * (n))) \
 					& ~((d)->interval - 1))
@@ -2700,13 +2711,25 @@ static int dwc3_gadget_soft_connect(struct dwc3 *dwc)
 	 * device-initiated disconnect requires a core soft reset
 	 * (DCTL.CSftRst) before enabling the run/stop bit.
 	 */
+	if (dwc3_wayne_trace())
+		dev_info(dwc->dev, "WAYNE_USB soft reset start\n");
 	ret = dwc3_core_soft_reset(dwc);
+	if (dwc3_wayne_trace())
+		dev_info(dwc->dev, "WAYNE_USB soft reset ret=%d\n", ret);
 	if (ret)
 		return ret;
 
 	dwc3_event_buffers_setup(dwc);
-	__dwc3_gadget_start(dwc);
-	return dwc3_gadget_run_stop(dwc, true);
+	if (dwc3_wayne_trace() && dwc->ev_buf)
+		dev_info(dwc->dev, "WAYNE_USB event DMA=%pad length=%u mask=%#llx\n",
+			 &dwc->ev_buf->dma, dwc->ev_buf->length, dwc->sysdev->coherent_dma_mask);
+	ret = __dwc3_gadget_start(dwc);
+	if (dwc3_wayne_trace())
+		dev_info(dwc->dev, "WAYNE_USB EP0 start ret=%d\n", ret);
+	ret = dwc3_gadget_run_stop(dwc, true);
+	if (dwc3_wayne_trace())
+		dev_info(dwc->dev, "WAYNE_USB run-stop ret=%d\n", ret);
+	return ret;
 }
 
 static int dwc3_gadget_pullup(struct usb_gadget *g, int is_on)
@@ -2735,6 +2758,9 @@ static int dwc3_gadget_pullup(struct usb_gadget *g, int is_on)
 	 * the run stop sequence, so avoid duplicate operations here.
 	 */
 	ret = pm_runtime_get_sync(dwc->dev);
+	if (dwc3_wayne_trace())
+		dev_info(dwc->dev, "WAYNE_USB pullup=%d rpm_get=%d suspended=%d\n",
+			 is_on, ret, pm_runtime_suspended(dwc->dev));
 	if (!ret || ret < 0) {
 		pm_runtime_put(dwc->dev);
 		if (ret < 0)
@@ -4407,6 +4433,8 @@ static irqreturn_t dwc3_process_event_buf(struct dwc3_event_buffer *evt)
 		union dwc3_event event;
 
 		event.raw = *(u32 *) (evt->cache + evt->lpos);
+		if (dwc3_wayne_trace())
+			dev_info_ratelimited(dwc->dev, "WAYNE_USB event=%#x\n", event.raw);
 
 		dwc3_process_event_entry(dwc, &event);
 
@@ -4488,6 +4516,10 @@ static irqreturn_t dwc3_check_event_buf(struct dwc3_event_buffer *evt)
 	count &= DWC3_GEVNTCOUNT_MASK;
 	if (!count)
 		return IRQ_NONE;
+
+	if (dwc3_wayne_trace())
+		dev_info_ratelimited(dwc->dev, "WAYNE_USB IRQ bytes=%u buffer=%u\n",
+				     count, evt->length);
 
 	evt->count = count;
 	evt->flags |= DWC3_EVENT_PENDING;
