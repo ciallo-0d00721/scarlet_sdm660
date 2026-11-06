@@ -35,6 +35,8 @@ case "$stage" in
         boot_profile=ram-usb2-guard-connect-trace ;;
     usb2guardmaskevents) name=ram-usb2-guard; defconfig=wayne_ram_usb2_guard_defconfig
         boot_profile=ram-usb2-guard-mask-events ;;
+    usb2guarddma32) name=ram-usb2-guard; defconfig=wayne_ram_usb2_guard_defconfig
+        boot_profile=ram-usb2-guard-dma32 ;;
     usb2guardbindonly) name=ram-usb2-guard; defconfig=wayne_ram_usb2_guard_defconfig
         boot_profile=ram-usb2-guard-bind-only ;;
     usb2guardfull) name=ram-usb2-guard; defconfig=wayne_ram_usb2_guard_defconfig

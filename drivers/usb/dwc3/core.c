@@ -41,6 +41,10 @@
 #include "debug.h"
 #include "../host/xhci-ext-caps.h"
 
+static bool wayne_dma32;
+module_param(wayne_dma32, bool, 0);
+MODULE_PARM_DESC(wayne_dma32, "Limit DWC3 DMA to 32 bits on Xiaomi Wayne");
+
 #define DWC3_DEFAULT_AUTOSUSPEND_DELAY	5000 /* ms */
 
 /**
@@ -532,6 +536,10 @@ static int dwc3_alloc_event_buffers(struct dwc3 *dwc, unsigned int length)
 	}
 	dwc->ev_buf = evt;
 
+	if (of_machine_is_compatible("xiaomi,wayne"))
+		dev_info(dwc->dev, "WAYNE_USB allocated event DMA=%pad mask=%#llx width=%u\n",
+			 &evt->dma, dwc->sysdev->coherent_dma_mask,
+			 DWC3_GHWPARAMS0_AWIDTH(dwc->hwparams.hwparams0));
 	return 0;
 }
 
@@ -2188,8 +2196,14 @@ static int dwc3_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, dwc);
 	dwc3_cache_hwparams(dwc);
 
-	if (!dwc->sysdev_is_parent &&
-	    DWC3_GHWPARAMS0_AWIDTH(dwc->hwparams.hwparams0) == 64) {
+	if (!dwc->sysdev_is_parent && wayne_dma32 &&
+	    of_machine_is_compatible("xiaomi,wayne")) {
+		ret = dma_set_mask_and_coherent(dwc->sysdev, DMA_BIT_MASK(32));
+		if (ret)
+			goto err_disable_clks;
+		dev_info(dev, "WAYNE_USB using 32-bit DMA\n");
+	} else if (!dwc->sysdev_is_parent &&
+		   DWC3_GHWPARAMS0_AWIDTH(dwc->hwparams.hwparams0) == 64) {
 		ret = dma_set_mask_and_coherent(dwc->sysdev, DMA_BIT_MASK(64));
 		if (ret)
 			goto err_disable_clks;
