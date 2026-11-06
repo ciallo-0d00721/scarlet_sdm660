@@ -180,3 +180,21 @@ the enable request. The `usb2guardbindonly` profile adds
 function deactivation to hold off host connection while the UDC
 binds the gadget. This separates binding from the pull-up and host
 enumeration. It is a bring-up diagnostic.
+
+On Wayne, the bind-only and connect-enabled images from build
+`843fbf450a50` had identical kernel, DTB, and initramfs payloads.
+With `g_serial.bind_only=1`, the serial gadget bound to `a800000.usb`
+and stayed in `not attached` state. The software timer returned the
+phone to Fastboot after about 72 seconds. With host connection
+enabled, the gadget bound and the enable request returned successfully,
+but the phone returned to Fastboot after about 20 seconds and the host
+observed no CDC ACM device. The recovered console ends immediately
+after the enable request and UDC snapshot, with no panic trace. The
+comparison places the failure on the connection path or its early
+events, after successful gadget binding. Both tests returned to the
+original OS using a plain Fastboot reboot.
+
+The QEMU dummy UDC reaches `configured` with normal connection and
+stays `not attached` with the same function bound in bind-only mode.
+The phone payload on QEMU without a dummy UDC accepts the enable
+request while the UDC class remains empty.
